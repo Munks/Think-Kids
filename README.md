@@ -1,3 +1,2 @@
-#Think:Kids
-#	Massachusetts General Hospital - Psychiatry
-	
+#	Think:Kids
+# Massachusetts General Hospital - Psychiatry
