@@ -80,20 +80,20 @@ for file in folder:
     session_lengths = {
         -1: 'None',
         0: 'None',
-        1: '0-5',
-        2: '5-10',
-        3: '10-15',
-        4: '15-20',
-        5: '20-25',
-        6: '25-30',
-        7: '30-35',
-        8: '35-40',
-        9: '40-45',
-        10: '45-50',
-        11: '50-55',
-        12: '55-60',
-        13: '60-65',
-        14: '65-70'
+        1: '5',
+        2: '10',
+        3: '15',
+        4: '20',
+        5: '25',
+        6: '30',
+        7: '35',
+        8: '40',
+        9: '45',
+        10: '50',
+        11: '55',
+        12: '60',
+        13: '65',
+        14: '70'
     }
     time = session_lengths[count]
     # Grab each cell of the data sheet and string them after eachother
@@ -185,14 +185,8 @@ for file in folder:
     # Open the TPOCSA Files
     df_TPOCSA = pd.read_excel(file, header=None)
 
-    # Take the column with data
-    df = df_TPOCSA[7]
-    cell_value = []
-
     # Import the data into a dataframe
-    for i in df:
-        cell_value.append(i)
-    data = pd.DataFrame(data=cell_value)
+    data = pd.DataFrame(data=df_TPOCSA[7])
 
     # Make the single column into a single row
     data = data.transpose()
