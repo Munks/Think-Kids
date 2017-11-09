@@ -78,8 +78,8 @@ for file in folder:
         if i in [1, 2, 3, 4, 99]:
             count += 1
     session_lengths = {
-        -1: 'None',
-        0: 'None',
+        -1: np.NaN,
+        0: np.NaN,
         1: '5',
         2: '10',
         3: '15',
@@ -148,7 +148,7 @@ for i in range(14):
             header = ('Question_' + str(i + 1))
             columns.append(header)
         elif x != 16:
-            header = ('Component_' + str(1 + i) + '_Time_' + str(1 + x))
+            header = ('Component_' + str(i + 1) + '_Time_' + str(x - 1))
             columns.append(header)
         else:
             skillfullness = ('Skillfullness_Component_' + str(1 + i))
@@ -234,4 +234,4 @@ result = pd.merge(df1, df2, how='outer', on=[
 ])
 
 # Save the result to an excel
-result.to_excel(Compiled_Data + '\Full_data.xlsx')
+result.to_excel(Compiled_Data + '\Full_Data.xlsx')
