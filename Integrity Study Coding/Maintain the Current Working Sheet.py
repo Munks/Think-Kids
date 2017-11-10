@@ -47,8 +47,8 @@ for file in folder:
     # Replace the blanks with neutral values (np.NaN)
     df_TIRF.replace({
         'Thoroughness Rating NA  -  1  -  4': np.NaN, '____': np.NaN,
-        'NA  -  1  -  2  -  3  -  4': np.NaN, 'NA': 99, '□ _____': np.NaN,
-        'N/A': 99, 'na': 99, 'n/a': 99
+        'NA  -  1  -  2  -  3  -  4': np.NaN, '□ _____': np.NaN,
+        'NA ': np.NaN, 'NA  ': np.NaN, ' 1  -  2  -  3  -  4': np.NaN
     }, inplace=True)
 
     # Drop out universally blank rows
