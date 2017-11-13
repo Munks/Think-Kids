@@ -37,11 +37,11 @@ frames = []
 
 for file in folder:
     # Create file name containers
-    filename = file[-24:-9]
+    filename = file[-25:-9]
     coder = filename[-2:]
     date = filename[-9:-7] + '/' + filename[-7:-5] + '/20' + filename[-5:-3]
-    family = filename[-12:-10]
-    specialist = filename[-15:-13]
+    family = filename[-13:-10]
+    specialist = filename[-16:-14]
     df_TIRF = pd.read_excel(file, header=None)
 
     # Replace the blanks with neutral values (np.NaN)
@@ -58,19 +58,19 @@ for file in folder:
     df_TIRF.drop([1], axis=1, inplace=True)
 
     # Clean data sheets that have problems with columns
-    # 73_89_071817_02 has an extra column at the end of the sheet
-    if filename == '73_89_071817_02':
+    # 73_089_071817_02 has an extra column at the end of the sheet
+    if filename == '73_089_071817_02':
         df_TIRF.drop([18], axis=1, inplace=True)
 
     # reorient the sheet horizontally
     df_TIRF = df_TIRF.transpose()
 
     # Clean data sheets that have problems with rows
-    # Both 34_18_020817_02 and 31_30_060517_02 have a question after the notes
-    if filename == '34_18_020817_02':
+    # 34_018_020817_02 and 31_030_060517_02 have a question after the notes
+    if filename == '34_018_020817_02':
         for i in range(11):
             df_TIRF.drop([21 + i], axis=1, inplace=True)
-    elif filename == '31_30_060517_02':
+    elif filename == '31_030_060517_02':
         for i in range(14):
             df_TIRF.drop([21 + i], axis=1, inplace=True)
     count = -1
@@ -176,11 +176,11 @@ frames = []
 
 for file in folder:
     # Create file name containers
-    filename = file[-27:-12]
+    filename = file[-28:-12]
     coder = filename[-2:]
     date = filename[-9:-7] + '/' + filename[-7:-5] + '/20' + filename[-5:-3]
-    family = filename[-12:-10]
-    specialist = filename[-15:-13]
+    family = filename[-13:-10]
+    specialist = filename[-16:-14]
 
     # Open the TPOCSA Files
     df_TPOCSA = pd.read_excel(file, header=None)
