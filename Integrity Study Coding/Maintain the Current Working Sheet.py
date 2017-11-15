@@ -121,8 +121,8 @@ for file in folder:
     data[9] = data[26]
     data[10] = data[29]
     data[11] = data[32]
-    data[12] = data[278]
-    data[13] = data[279]
+    data[12] = data[277]
+    data[13] = data[278]
     data[14] = data[280]
 
     # Add the new row under the previous row in the final version
