@@ -111,11 +111,19 @@ for file in folder:
 
     # Create the first few columns
     data[0] = filename
+    data[2] = data[1]
     data[1] = date
-    data[2] = int(coder)
-    data[3] = int(family)
-    data[4] = int(specialist)
-    data[5] = time
+    data[3] = int(coder)
+    data[5] = int(family)
+    data[6] = int(specialist)
+    data[7] = time
+    data[8] = data[21]
+    data[9] = data[26]
+    data[10] = data[29]
+    data[11] = data[32]
+    data[12] = data[278]
+    data[13] = data[279]
+    data[14] = data[280]
 
     # Add the new row under the previous row in the final version
     frames.append(data)
@@ -126,17 +134,19 @@ frame = pd.concat(frames)
 # Drop the extra columns in the dataframe
 for i in range(50):
     frame.drop([i + 290], axis=1, inplace=True)
-for i in range(27):
-    frame.drop([i + 7], axis=1, inplace=True)
-for i in range(10):
-    frame.drop([i + 273], axis=1, inplace=True)
+for i in range(19):
+    frame.drop([i + 15], axis=1, inplace=True)
+for i in range(12):
+    frame.drop([i + 272], axis=1, inplace=True)
 for i in range(3):
     frame.drop([i + 285], axis=1, inplace=True)
 
 # Creating the names for columns
 columns = [
-    'FileName', 'Date', 'Coder', 'Family', 'Specialist', 'Session Length',
-    'Attending'
+    'FileName', 'Date', 'Rating Date', 'Coder', 'Raters Name', 'Family',
+    'Specialist', 'Session Length Calculated', 'Session Length Reported',
+    'Caregiver Attending', 'Youth Attending', 'Other Attending',
+    'Capture Integrity Yes', 'Capture Integrity No', 'Capture Integrity Maybe'
 ]
 
 for i in range(14):
@@ -154,7 +164,6 @@ for i in range(14):
             skillfullness = ('Skillfullness_Component_' + str(1 + i))
             columns.append(skillfullness)
 end_column_names = [
-    'Capture_Integrity_Q', 'Capture_Integrity_A',
     'Global_Treatment_Integrity_Q', 'Global_Treatment_Integrity_A', 'Notes'
 ]
 
