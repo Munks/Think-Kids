@@ -1,4 +1,6 @@
-# This code compiles the 'Validating the CPS Integrity Coding System' data
+"""
+This code compiles the 'Validating the CPS Integrity Coding System' data
+"""
 
 # Import all required modules for this code
 import pandas as pd
