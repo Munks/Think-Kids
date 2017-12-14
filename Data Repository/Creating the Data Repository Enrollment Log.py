@@ -57,6 +57,8 @@ results = pd.merge(df_childhistory, df_redcaplog, left_on=['participant_id'],
 results = results[results['Repository Consent?'] == 'YES']
 # Identify genders
 results['Gender'] = results['Gender'].replace({1: 'Male', 2: 'Female'})
-# Create a report called 'Results' in our 'Data Repository' folder on
-# the desktop
+"""
+Create a report called 'Enrollment Log Demographics' in our 'Data Repository'
+folder on the desktop
+"""
 results.to_excel(path + '\Enrollment Log Demographics.xlsx')
