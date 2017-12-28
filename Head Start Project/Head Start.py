@@ -67,14 +67,81 @@ for i in all_pcri:
 results = []
 results = score.pcri(pcri_1, results, '#_', 'pcri__rel', 't1')
 df = pd.merge(df, results, how='left', left_on='ID #', right_on='id')
+df.drop('id', axis=1, inplace=True)
 results = []
 results = score.pcri(pcri_2, results, '#_', 'pcri__rel', 't2')
 df = pd.merge(df, results, how='left', left_on='ID #', right_on='id')
+df.drop('id', axis=1, inplace=True)
 results = []
 results = score.pcri(pcri_3, results, '#_', 'pcri__rel', 't3')
 df = pd.merge(df, results, how='left', left_on='ID #', right_on='id')
-# Score the PCRI DataFrames
+df.drop('id', axis=1, inplace=True)
 
+
+# Make the CPS-AIM DataFrames
+cps_aim_t1 = ['ID #']
+cps_aim_t2 = ['ID #']
+cps_aim_t3 = ['ID #']
+
+for column in df.columns:
+    if 'T1_TKCOT' in column:
+        name = column[:]
+        cps_aim_t1.append(name)
+    if 'T2_TKCOT' in column:
+        name = column[:]
+        cps_aim_t2.append(name)
+    if 'T3_TKCOT' in column:
+        name = column[:]
+        cps_aim_t3.append(name)
+
+cps_aim_df_t1 = df[cps_aim_t1]
+column_names = []
+for column in cps_aim_df_t1.columns:
+    name = column[3:8] + '_' + column[8:]
+    column_names.append(name.lower())
+
+cps_aim_df_t1.columns = column_names
+
+cps_aim_df_t2 = df[cps_aim_t2]
+column_names = []
+for column in cps_aim_df_t2.columns:
+    name = column[3:8] + '_' + column[8:]
+    column_names.append(name.lower())
+
+cps_aim_df_t2.columns = column_names
+
+cps_aim_df_t3 = df[cps_aim_t3]
+column_names = []
+for column in cps_aim_df_t3.columns:
+    name = column[3:8] + '_' + column[8:]
+    column_names.append(name.lower())
+
+cps_aim_df_t3.columns = column_names
+cps_aim_t1.remove('ID #')
+cps_aim_t2.remove('ID #')
+cps_aim_t3.remove('ID #')
+all_cps_aim = []
+all_cps_aim.append(cps_aim_t1)
+all_cps_aim.append(cps_aim_t2)
+all_cps_aim.append(cps_aim_t3)
+for i in all_cps_aim:
+    df.drop(i, axis=1, inplace=True)
+
+
+results = []
+results = score.cps_aim(cps_aim_df_t1, results, '#_', 't1')
+df = pd.merge(df, results, how='left', left_on='ID #', right_on='id')
+df.drop('id', axis=1, inplace=True)
+results = []
+results = score.cps_aim(cps_aim_df_t2, results, '#_', 't2')
+df = pd.merge(df, results, how='left', left_on='ID #', right_on='id')
+df.drop('id', axis=1, inplace=True)
+results = []
+results = score.cps_aim(cps_aim_df_t3, results, '#_', 't3')
+df = pd.merge(df, results, how='left', left_on='ID #', right_on='id')
+df.drop('id', axis=1, inplace=True)
+
+# Adding the CPS-AIM
 
 df2 = df.mean()
 
@@ -103,8 +170,5 @@ df5['Stats'] = 'Standard Deviation'
 frame = [df, df2, df3, df4, df5]
 
 results = pd.concat(frame)
-
-
-# Adding the CPS-AIM
 
 results.to_csv(path + '/Head Start Data Complied.csv')
