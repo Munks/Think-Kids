@@ -2,6 +2,9 @@
 
 # Import all required modules for this code
 import pandas as pd
+import sys
+sys.path.append(r'C:\Python Programs\Think-Kids_Private')
+import scoring as score
 
 # Create the path and locate the required files
 path = r'C:\Users\cje4\Desktop\Data Repository'
@@ -38,6 +41,7 @@ for i in range(160):
     to_drop.append(x)
 
 child_history = child_history.drop(to_drop, axis=1)
+
 
 # Create the initial Final Results DataFrame
 final_results = pd.merge(redcaplog, child_history, how='outer',

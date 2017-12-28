@@ -4,6 +4,15 @@ import sys
 sys.path.append(r'C:\Python Programs\Think-Kids_Private')
 import scoring as score
 
+
+# Functions
+def df_time_columns(label, columns_list):
+    for column in df.columns:
+        if label in column:
+            name = column[:]
+            columns_list.append(name)
+
+
 path = r'C:\Users\cje4\Desktop\Head Start Project'
 file = r'/Head Start Data 11_21_17.xlsx'
 
@@ -16,35 +25,28 @@ pcri_df_t1 = ['ID #']
 pcri_df_t2 = ['ID #', 'T1_PCRI_REL']
 pcri_df_t3 = ['ID #', 'T1_PCRI_REL']
 
-for column in df.columns:
-    if 'T1_PCRI' in column:
-        name = column[:]
-        pcri_df_t1.append(name)
-    if 'T2_PCRI' in column:
-        name = column[:]
-        pcri_df_t2.append(name)
-    if 'T3_PCRI' in column:
-        name = column[:]
-        pcri_df_t3.append(name)
+df_time_columns('T1_PCRI', pcri_df_t1)
+df_time_columns('T2_PCRI', pcri_df_t2)
+df_time_columns('T3_PCRI', pcri_df_t3)
 
-pcri_1 = df[pcri_df_t1]
 column_names = []
+pcri_1 = df[pcri_df_t1]
 for column in pcri_1.columns:
     name = column[3:7] + '_' + column[7:]
     column_names.append(name.lower())
 
 pcri_1.columns = column_names
 
-pcri_2 = df[pcri_df_t2]
 column_names = []
+pcri_2 = df[pcri_df_t2]
 for column in pcri_2.columns:
     name = column[3:7] + '_' + column[7:]
     column_names.append(name.lower())
 
 pcri_2.columns = column_names
 
-pcri_3 = df[pcri_df_t3]
 column_names = []
+pcri_3 = df[pcri_df_t3]
 for column in pcri_3.columns:
     name = column[3:7] + '_' + column[7:]
     column_names.append(name.lower())
@@ -83,16 +85,9 @@ cps_aim_t1 = ['ID #']
 cps_aim_t2 = ['ID #']
 cps_aim_t3 = ['ID #']
 
-for column in df.columns:
-    if 'T1_TKCOT' in column:
-        name = column[:]
-        cps_aim_t1.append(name)
-    if 'T2_TKCOT' in column:
-        name = column[:]
-        cps_aim_t2.append(name)
-    if 'T3_TKCOT' in column:
-        name = column[:]
-        cps_aim_t3.append(name)
+df_time_columns('T1_TKCOT', cps_aim_t1)
+df_time_columns('T2_TKCOT', cps_aim_t2)
+df_time_columns('T3_TKCOT', cps_aim_t3)
 
 cps_aim_df_t1 = df[cps_aim_t1]
 column_names = []
