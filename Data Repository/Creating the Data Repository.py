@@ -43,6 +43,119 @@ for i in range(160):
 child_history = child_history.drop(to_drop, axis=1)
 
 
+# Functions
+def df_time_columns(label, time, columns_list):
+    for column in child_history.columns:
+        if label in column[:4] and time in column[-2:]:
+            name = column[:]
+            columns_list.append(name)
+
+
+# Make the PCRI DataFrames
+pcri_df_t1 = ['redcap_id', 'rel_to_child_w0']
+pcri_df_t2 = ['redcap_id', 'rel_to_child_w3']
+pcri_df_t3 = ['redcap_id', 'rel_to_child_w6']
+pcri_df_t4 = ['redcap_id', 'rel_to_child_w9']
+pcri_df_t5 = ['redcap_id', 'rel_to_child_w12']
+
+df_time_columns('pcri', 'w0', pcri_df_t1)
+df_time_columns('pcri', 'w3', pcri_df_t2)
+df_time_columns('pcri', 'w6', pcri_df_t3)
+df_time_columns('pcri', 'w9', pcri_df_t4)
+df_time_columns('pcri', '12', pcri_df_t5)
+
+column_names = []
+pcri_1 = child_history[pcri_df_t1]
+for column in pcri_1.columns:
+    name = column[:-3]
+    column_names.append(name.lower())
+
+pcri_1.columns = column_names
+
+column_names = []
+pcri_2 = child_history[pcri_df_t2]
+for column in pcri_2.columns:
+    name = column[:-3]
+    column_names.append(name.lower())
+
+pcri_2.columns = column_names
+
+column_names = []
+pcri_3 = child_history[pcri_df_t3]
+for column in pcri_3.columns:
+    name = column[:-3]
+    column_names.append(name.lower())
+
+pcri_3.columns = column_names
+
+column_names = []
+pcri_4 = child_history[pcri_df_t4]
+for column in pcri_4.columns:
+    name = column[:-3]
+    column_names.append(name.lower())
+
+pcri_4.columns = column_names
+
+column_names = []
+pcri_5 = child_history[pcri_df_t5]
+for column in pcri_5.columns:
+    name = column[:-4]
+    column_names.append(name.lower())
+
+pcri_5.columns = column_names
+
+pcri_df_t1.remove('redcap_id')
+pcri_df_t1.remove('rel_to_child_w0')
+pcri_df_t2.remove('redcap_id')
+pcri_df_t2.remove('rel_to_child_w3')
+pcri_df_t3.remove('redcap_id')
+pcri_df_t3.remove('rel_to_child_w6')
+pcri_df_t4.remove('redcap_id')
+pcri_df_t4.remove('rel_to_child_w9')
+pcri_df_t5.remove('redcap_id')
+pcri_df_t5.remove('rel_to_child_w12')
+
+all_pcri = []
+all_pcri.append(pcri_df_t1)
+all_pcri.append(pcri_df_t2)
+all_pcri.append(pcri_df_t3)
+all_pcri.append(pcri_df_t4)
+all_pcri.append(pcri_df_t5)
+for i in all_pcri:
+    child_history.drop(i, axis=1, inplace=True)
+
+# Add the PCRI Results to the main DataFrame
+results = []
+results = score.pcri(pcri_1, results, 'redcap', 'rel_to_child', 't1')
+child_history = pd.merge(
+    child_history, results, how='left', left_on='redcap_id', right_on='id'
+)
+child_history.drop('id', axis=1, inplace=True)
+results = []
+results = score.pcri(pcri_2, results, 'redcap', 'rel_to_child', 't2')
+child_history = pd.merge(
+    child_history, results, how='left', left_on='redcap_id', right_on='id'
+)
+child_history.drop('id', axis=1, inplace=True)
+results = []
+results = score.pcri(pcri_3, results, 'redcap', 'rel_to_child', 't3')
+child_history = pd.merge(
+    child_history, results, how='left', left_on='redcap_id', right_on='id'
+)
+child_history.drop('id', axis=1, inplace=True)
+results = []
+results = score.pcri(pcri_4, results, 'redcap', 'rel_to_child', 't4')
+child_history = pd.merge(
+    child_history, results, how='left', left_on='redcap_id', right_on='id'
+)
+child_history.drop('id', axis=1, inplace=True)
+results = []
+results = score.pcri(pcri_5, results, 'redca', 'rel_to_child', 't5')
+child_history = pd.merge(
+    child_history, results, how='left', left_on='redcap_id', right_on='id'
+)
+child_history.drop('id', axis=1, inplace=True)
+
 # Create the initial Final Results DataFrame
 final_results = pd.merge(redcaplog, child_history, how='outer',
                          left_on=['REDcap ID'], right_on=['redcap_id'])

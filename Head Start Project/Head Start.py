@@ -8,7 +8,7 @@ import scoring as score
 # Functions
 def df_time_columns(label, columns_list):
     for column in df.columns:
-        if label in column:
+        if label in column[7:]:
             name = column[:]
             columns_list.append(name)
 
