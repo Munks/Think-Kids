@@ -8,13 +8,13 @@ import scoring as score
 # Functions
 def df_time_columns(label, columns_list):
     for column in df.columns:
-        if label in column[7:]:
+        if label in column[:7]:
             name = column[:]
             columns_list.append(name)
 
 
 path = r'C:\Users\cje4\Desktop\Head Start Project'
-file = r'/Head Start Data 11_21_17.xlsx'
+file = r'\Head Start Data 11_21_17.xlsx'
 
 df = pd.read_excel(path + file)
 df = df.replace({99: np.nan})
@@ -85,9 +85,9 @@ cps_aim_t1 = ['ID #']
 cps_aim_t2 = ['ID #']
 cps_aim_t3 = ['ID #']
 
-df_time_columns('T1_TKCOT', cps_aim_t1)
-df_time_columns('T2_TKCOT', cps_aim_t2)
-df_time_columns('T3_TKCOT', cps_aim_t3)
+df_time_columns('T1_TKCO', cps_aim_t1)
+df_time_columns('T2_TKCO', cps_aim_t2)
+df_time_columns('T3_TKCO', cps_aim_t3)
 
 cps_aim_df_t1 = df[cps_aim_t1]
 column_names = []
@@ -166,4 +166,4 @@ frame = [df, df2, df3, df4, df5]
 
 results = pd.concat(frame)
 
-results.to_csv(path + '/Head Start Data Complied.csv')
+results.to_csv(path + r'\Head Start Data Complied.csv')
