@@ -13,6 +13,14 @@ def df_time_columns(label, columns_list):
             columns_list.append(name)
 
 
+def split_dfs(df, slice_front, slice_back):
+    front = int(slice_front)
+    back = int(slice_back)
+    for column in df.columns:
+        name = column[front:back] + '_' + column[back:]
+        column_names.append(name.lower())
+
+
 path = r'C:\Users\cje4\Desktop\Head Start Project'
 file = r'\Head Start Data 11_21_17.xlsx'
 
@@ -31,26 +39,17 @@ df_time_columns('T3_PCRI', pcri_df_t3)
 
 column_names = []
 pcri_1 = df[pcri_df_t1]
-for column in pcri_1.columns:
-    name = column[3:7] + '_' + column[7:]
-    column_names.append(name.lower())
-
+split_dfs(pcri_1, 3, 7)
 pcri_1.columns = column_names
 
 column_names = []
 pcri_2 = df[pcri_df_t2]
-for column in pcri_2.columns:
-    name = column[3:7] + '_' + column[7:]
-    column_names.append(name.lower())
-
+split_dfs(pcri_2, 3, 7)
 pcri_2.columns = column_names
 
 column_names = []
 pcri_3 = df[pcri_df_t3]
-for column in pcri_3.columns:
-    name = column[3:7] + '_' + column[7:]
-    column_names.append(name.lower())
-
+split_dfs(pcri_3, 3, 7)
 pcri_3.columns = column_names
 
 pcri_df_t1.remove('ID #')
@@ -91,27 +90,19 @@ df_time_columns('T3_TKCO', cps_aim_t3)
 
 cps_aim_df_t1 = df[cps_aim_t1]
 column_names = []
-for column in cps_aim_df_t1.columns:
-    name = column[3:8] + '_' + column[8:]
-    column_names.append(name.lower())
-
+split_dfs(cps_aim_df_t1, 3, 8)
 cps_aim_df_t1.columns = column_names
 
 cps_aim_df_t2 = df[cps_aim_t2]
 column_names = []
-for column in cps_aim_df_t2.columns:
-    name = column[3:8] + '_' + column[8:]
-    column_names.append(name.lower())
-
+split_dfs(cps_aim_df_t2, 3, 8)
 cps_aim_df_t2.columns = column_names
 
 cps_aim_df_t3 = df[cps_aim_t3]
 column_names = []
-for column in cps_aim_df_t3.columns:
-    name = column[3:8] + '_' + column[8:]
-    column_names.append(name.lower())
-
+split_dfs(cps_aim_df_t3, 3, 8)
 cps_aim_df_t3.columns = column_names
+
 cps_aim_t1.remove('ID #')
 cps_aim_t2.remove('ID #')
 cps_aim_t3.remove('ID #')
@@ -167,3 +158,4 @@ frame = [df, df2, df3, df4, df5]
 results = pd.concat(frame)
 
 results.to_csv(path + r'\Head Start Data Complied.csv')
+print('Saved Results')
