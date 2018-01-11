@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import glob
 import os
+import datetime as dt
 
 # Set the path
 path = r'C:\Users\cje4\Desktop\Integrity Study Coding Sheets'
@@ -14,17 +15,17 @@ TIRF_Data = path + '\TIRF Data'
 TPOCSA_Data = path + '\TPOCSA Data'
 Compiled_Data = path + '\Compiled Data'
 
+current_date = str(dt.date.today())
+
+folder_date = Compiled_Data + '\\Data Compiled on ' + current_date
+
 
 # Function to make folders
 def make_folders():
-    if not os.path.exists(TIRF_Data):
-        os.makedirs(TIRF_Data)
-
-    if not os.path.exists(TPOCSA_Data):
-        os.makedirs(TPOCSA_Data)
-
     if not os.path.exists(Compiled_Data):
         os.makedirs(Compiled_Data)
+    if not os.path.exists(folder_date):
+        os.makedirs(folder_date)
 
 
 # Making folders
@@ -125,7 +126,7 @@ for file in folder:
     data[11] = data[32]
     data[12] = data[277]
     data[13] = data[278]
-    data[14] = data[280]
+    data[14] = data[281]
 
     # Add the new row under the previous row in the final version
     frames.append(data)
@@ -174,9 +175,9 @@ for i in end_column_names:
 
 # Renaming the columns
 frame.columns = columns
-
+end_file_name = ' ' + current_date + '.xlsx'
 # Save the result to an excel
-frame.to_excel(Compiled_Data + '\TIRF_Data.xlsx')
+frame.to_excel(folder_date + '\TIRF_Data' + end_file_name)
 
 # Part 2
 # Compile the TPOCSA Data
@@ -231,13 +232,14 @@ for i in range(10):
 # Rename columns
 frame.columns = columns
 
+
 # Save the result to an excel
-frame.to_excel(Compiled_Data + '\TPOCSA_Data.xlsx')
+frame.to_excel(folder_date + '\TPOCSA_Data' + end_file_name)
 
 # Part 3
 # Import the TIRF and TPOCSA data
-df1 = pd.read_excel(Compiled_Data + '\TIRF_Data.xlsx')
-df2 = pd.read_excel(Compiled_Data + '\TPOCSA_Data.xlsx')
+df1 = pd.read_excel(folder_date + '\TIRF_Data' + end_file_name)
+df2 = pd.read_excel(folder_date + '\TPOCSA_Data' + end_file_name)
 
 # Merge the TIRF and TPOCSA data
 result = pd.merge(df1, df2, how='outer', on=[
@@ -245,4 +247,4 @@ result = pd.merge(df1, df2, how='outer', on=[
 ])
 
 # Save the result to an excel
-result.to_excel(Compiled_Data + '\Full_Data.xlsx')
+result.to_excel(folder_date + '\Full_Data' + end_file_name)

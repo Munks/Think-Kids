@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import datetime as dt
 import sys
 sys.path.append(r'C:\Python Programs\Think-Kids_Private')
 import scoring as score
@@ -21,12 +23,19 @@ def split_dfs(df, slice_front, slice_back):
         column_names.append(name.lower())
 
 
-path = r'C:\Users\cje4\Desktop\Head Start Project'
+current_date = str(dt.date.today())
+
+path = r'C:\Users\cje4\Desktop\Head Start Project Data'
 file = r'\Head Start Data 11_21_17.xlsx'
 
 df = pd.read_excel(path + file)
 df = df.replace({99: np.nan})
 
+data = df['DEM_AGE']
+plt.hist(data.dropna())
+plt.xlabel('Age')
+plt.ylabel('Count')
+plt.show()
 
 # Make the PCRI DataFrames
 pcri_df_t1 = ['ID #']
@@ -69,6 +78,8 @@ results = []
 results = score.pcri(pcri_1, results, '#_', 'pcri__rel', 't1')
 df = pd.merge(df, results, how='left', left_on='ID #', right_on='id')
 df.drop('id', axis=1, inplace=True)
+results.drop('id', axis=1, inplace=True)
+results.drop('pcri_valid_check_t1', axis=1, inplace=True)
 results = []
 results = score.pcri(pcri_2, results, '#_', 'pcri__rel', 't2')
 df = pd.merge(df, results, how='left', left_on='ID #', right_on='id')
@@ -157,5 +168,6 @@ frame = [df, df2, df3, df4, df5]
 
 results = pd.concat(frame)
 
-results.to_csv(path + r'\Head Start Data Complied.csv')
-print('Saved Results')
+filename = path + r'\Head Start Data Complied' + current_date + '.csv'
+results.to_csv(filename)
+print('Results Saved to ===> ' + filename)

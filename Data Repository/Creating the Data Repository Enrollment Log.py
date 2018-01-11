@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from redcap import Project
 import sys
-sys.path.append('C:\Python Programs')
+sys.path.append(r'C:\Python Programs\Think-Kids_Private')
 import tokens as tk
 
 # Create the path and locate the required files
