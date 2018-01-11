@@ -169,7 +169,14 @@ for i in range(14):
 end_column_names = [
     'Global_Treatment_Integrity_Q', 'Global_Treatment_Integrity_A', 'Notes'
 ]
+count = []
+c = -1
+for i in frame.columns:
+    c += 1
+    count.append(c)
+frame.columns = count
 
+frame = frame[count[:256]]
 for i in end_column_names:
     columns.append(i)
 
