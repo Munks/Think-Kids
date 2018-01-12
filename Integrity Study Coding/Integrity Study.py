@@ -51,7 +51,8 @@ for file in folder:
     df_TIRF.replace({
         'Thoroughness Rating NA  -  1  -  4': np.NaN, '____': np.NaN,
         'NA  -  1  -  2  -  3  -  4': np.NaN, '□ _____': np.NaN,
-        'NA ': np.NaN, 'NA  ': np.NaN, ' 1  -  2  -  3  -  4': np.NaN
+        'NA ': np.NaN, 'NA  ': np.NaN, ' 1  -  2  -  3  -  4': np.NaN,
+        'Y / N': np.NaN
     }, inplace=True)
 
     # Drop out universally blank rows
@@ -98,7 +99,7 @@ for file in folder:
         13: '65',
         14: '70'
     }
-    time = session_lengths[count]
+    time = str(session_lengths[count]) + ' min'
     # Grab each cell of the data sheet and string them after eachother
     # This puts the data in a single column
     cell_value = []

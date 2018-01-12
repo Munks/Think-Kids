@@ -20,42 +20,59 @@ full_data_files = []
 for filename in folder:
     full_data_files.append(filename)
 
-current_folder = full_data_files[-1]
 
-folder = glob.glob(current_folder + '\Full_Data*')
+def completed_count(data_name):
+    current_folder = full_data_files[-1]
+    folder = glob.glob(current_folder + '\\' + data_name + '*')
+    current_filename = []
+    for file in folder:
+        current_filename.append(file)
 
-current_filename = []
-for file in folder:
-    current_filename.append(file)
+    name = current_filename[0]
 
-name = current_filename[0]
+    df_full_data = pd.read_excel(name)
 
-df_full_data = pd.read_excel(name)
+    filename = []
+    raters = []
+    for files in df_full_data['FileName']:
+        filenames = files[:-3]
+        filename.append(filenames)
+        rater = int(files[-2:])
+        raters.append(rater)
+
+    single = []
+    single_rater = []
+    two = []
+    two_rater = []
+    three = []
+    three_rater = []
+    for x, y in zip(filename, raters):
+        if filename.count(x) == 1:
+            single.append(x)
+            single_rater.append(y)
+        elif filename.count(x) == 2:
+            two.append(x)
+            two_rater.append(y)
+        else:
+            three.append(x)
+            three_rater.append(y)
+
+    singles = pd.DataFrame({'Single Coding Sheet Completed': single})
+    singles['Rater'] = single_rater
+    doubles = pd.DataFrame({'Two Coding Sheets Completed': two})
+    doubles['Rater'] = two_rater
+    triples = pd.DataFrame({'Three or more Coding Sheets Completed': three})
+    triples['Rater'] = three_rater
+
+    dfs = [singles, doubles, triples]
+    results = pd.concat(dfs, axis=1)
+    current_folder = full_data_files[-1] + '\Coding Sheets Count '
+
+    filename = current_folder + current_date + ' ' + data_name
+
+    results.to_excel(filename + '.xlsx')
 
 
-filename = []
-for files in df_full_data['FileName']:
-    filenames = files[:-3]
-    filename.append(filenames)
-
-single = []
-two = []
-three = []
-for x in filename:
-    if filename.count(x) == 1:
-        single.append(x)
-    elif filename.count(x) == 2:
-        two.append(x)
-    else:
-        three.append(x)
-
-singles = pd.DataFrame({'Single Coding Sheet Completed': single})
-doubles = pd.DataFrame({'Two Coding Sheets Completed': two})
-triples = pd.DataFrame({'Three or more Coding Sheets Completed': three})
-
-dfs = [singles, doubles, triples]
-results = pd.concat(dfs, axis=1)
-
-filename = current_folder + '\Coding Sheets Count ' + current_date + '.xlsx'
-
-results.to_excel(filename)
+completed_count('Full_Data')
+completed_count('TIRF_Data')
+completed_count('TPOCSA_Data')
