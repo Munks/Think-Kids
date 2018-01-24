@@ -25,7 +25,7 @@ def split_dfs(df, slice_front, slice_back):
 
 current_date = str(dt.date.today())
 
-path = r'C:\Users\cje4\Desktop\Head Start Project Data'
+path = r'\\Cifs2\thinkkid$\Research\Chris\Head Start Project\Head Start Project Data'
 file = r'\Head Start Data 11_21_17.xlsx'
 
 df = pd.read_excel(path + file)
@@ -168,6 +168,6 @@ frame = [df, df2, df3, df4, df5]
 
 results = pd.concat(frame)
 
-filename = path + r'\Head Start Data Complied' + current_date + '.csv'
+filename = path + r'\Head Start Data Complied ' + current_date + '.csv'
 results.to_csv(filename)
 print('Results Saved to ===> ' + filename)

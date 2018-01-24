@@ -10,30 +10,22 @@ import os
 import datetime as dt
 
 # Set the path
-path = r'C:\Users\cje4\Desktop\Integrity Study Coding Sheets'
-TIRF_Data = path + '\TIRF Data'
-TPOCSA_Data = path + '\TPOCSA Data'
-Compiled_Data = path + '\Compiled Data'
+path = r'\\Cifs2\thinkkid$\Research\Chris\Integrity Study Coding Sheets'
+tirf_data = path + '\TIRF Data'
+tpocsa_data = path + '\TPOCSA Data'
+compiled_data = path + '\Compiled Data'
 
 current_date = str(dt.date.today())
 
-folder_date = Compiled_Data + '\\Data Compiled on ' + current_date
+folder_date = compiled_data + '\\Data Compiled on ' + current_date
 
-
-# Function to make folders
-def make_folders():
-    if not os.path.exists(Compiled_Data):
-        os.makedirs(Compiled_Data)
-    if not os.path.exists(folder_date):
-        os.makedirs(folder_date)
-
-
-# Making folders
-make_folders()
+# Make a new folder for today
+if not os.path.exists(folder_date):
+    os.makedirs(folder_date)
 
 # Part 1
 # Compile the TIRF Data
-folder = glob.glob(TIRF_Data + '\*.xls')
+folder = glob.glob(tirf_data + '\*.xls')
 
 # Create an empty frame to store data in
 frames = []
@@ -61,22 +53,9 @@ for file in folder:
     # Drop out universally blank columns
     df_TIRF.drop([1], axis=1, inplace=True)
 
-    # Clean data sheets that have problems with columns
-    # 73_089_071817_02 has an extra column at the end of the sheet
-    if filename == '73_089_071817_02':
-        df_TIRF.drop([18], axis=1, inplace=True)
-
     # reorient the sheet horizontally
     df_TIRF = df_TIRF.transpose()
 
-    # Clean data sheets that have problems with rows
-    # 34_018_020817_02 and 31_030_060517_02 have a question after the notes
-    if filename == '34_018_020817_02':
-        for i in range(11):
-            df_TIRF.drop([21 + i], axis=1, inplace=True)
-    elif filename == '31_030_060517_02':
-        for i in range(14):
-            df_TIRF.drop([21 + i], axis=1, inplace=True)
     count = -1
     for i in df_TIRF[17]:
         if i in [1, 2, 3, 4, 99]:
@@ -189,7 +168,7 @@ frame.to_excel(folder_date + '\TIRF_Data' + end_file_name)
 
 # Part 2
 # Compile the TPOCSA Data
-folder = glob.glob(TPOCSA_Data + '\*.xlsx')
+folder = glob.glob(tpocsa_data + '\*.xlsx')
 
 # Create an empty frame to store data in
 frames = []
@@ -256,3 +235,57 @@ result = pd.merge(df1, df2, how='outer', on=[
 
 # Save the result to an excel
 result.to_excel(folder_date + '\Full_Data' + end_file_name)
+
+
+"""
+This section of the code checks if there have been two reports submitted on any
+given audio recording.
+"""
+
+
+def completed_count(data_name, df):
+    current_folder = folder_date
+    filename = []
+    raters = []
+    for files in df['FileName']:
+        filenames = files[:-3]
+        filename.append(filenames)
+        rater = int(files[-2:])
+        raters.append(rater)
+
+    single = []
+    single_rater = []
+    two = []
+    two_rater = []
+    three = []
+    three_rater = []
+    for x, y in zip(filename, raters):
+        if filename.count(x) == 1:
+            single.append(x)
+            single_rater.append(y)
+        elif filename.count(x) == 2:
+            two.append(x)
+            two_rater.append(y)
+        else:
+            three.append(x)
+            three_rater.append(y)
+
+    singles = pd.DataFrame({'Single Coding Sheet Completed': single})
+    singles['Rater'] = single_rater
+    doubles = pd.DataFrame({'Two Coding Sheets Completed': two})
+    doubles['Rater'] = two_rater
+    triples = pd.DataFrame({'Three or more Coding Sheets Completed': three})
+    triples['Rater'] = three_rater
+
+    dfs = [singles, doubles, triples]
+    results = pd.concat(dfs, axis=1)
+    current_folder = folder_date + '\Coding Sheets Count '
+
+    filename = current_folder + current_date + ' ' + data_name
+
+    results.to_excel(filename + '.xlsx')
+
+
+completed_count('Full_Data', result)
+completed_count('TIRF_Data', df1)
+completed_count('TPOCSA_Data', df2)
