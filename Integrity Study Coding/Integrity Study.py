@@ -10,7 +10,7 @@ import os
 import datetime as dt
 
 # Set the path
-path = r'\\Cifs2\thinkkid$\Research\Chris\Integrity Study Coding Sheets'
+path = r'\\Cifs2\thinkkid$\Research\Chris\Youth Villages\Integrity Study Coding Sheets'
 tirf_data = path + '\TIRF Data'
 tpocsa_data = path + '\TPOCSA Data'
 compiled_data = path + '\Compiled Data'

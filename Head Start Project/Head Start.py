@@ -26,7 +26,7 @@ def split_dfs(df, slice_front, slice_back):
 current_date = str(dt.date.today())
 
 path = r'\\Cifs2\thinkkid$\Research\Chris\Head Start Project\Head Start Project Data'
-file = r'\Head Start Data 11_21_17.xlsx'
+file = r'\Head Start Data Raw Data.xlsx'
 
 df = pd.read_excel(path + file)
 df = df.replace({99: np.nan})
@@ -140,7 +140,7 @@ df.drop('id', axis=1, inplace=True)
 
 # Adding the CPS-AIM
 
-df2 = df.mean()
+df2 = round(df.mean(), 2)
 
 df2 = pd.DataFrame(df2)
 df2 = df2.transpose()
@@ -158,7 +158,7 @@ df4 = pd.DataFrame(df4)
 df4 = df4.transpose()
 df4['Stats'] = 'Max'
 
-df5 = df.std()
+df5 = round(df.std(), 2)
 
 df5 = pd.DataFrame(df5)
 df5 = df5.transpose()
@@ -168,6 +168,6 @@ frame = [df, df2, df3, df4, df5]
 
 results = pd.concat(frame)
 
-filename = path + r'\Head Start Data Complied ' + current_date + '.csv'
-results.to_csv(filename)
+filename = path + r'\Head Start Data Complied ' + current_date + '.xlsx'
+results.to_excel(filename)
 print('Results Saved to ===> ' + filename)
