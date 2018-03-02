@@ -32,7 +32,6 @@ def tier(document):
     p = document.add_paragraph('', 'cps')
     p.alignment = centered
     p.add_run(tier_num)
-#    p.add_run('Tier ' + tier_question + ' Intensive Training')
     p = document.add_paragraph('', 'cps')
     p.alignment = centered
     if trainer_count == 1:
@@ -178,6 +177,29 @@ def build_start(document):
     tier(document)
 
 
+def ceu_type(types):
+    check = True
+    while check:
+        print('\nCEUs yet to be assigned:\n')
+        types_list = []
+        for a, b in enumerate(ceu_types):
+            print('\t' + str(a) + '\t' + str(b))
+            types_list.append(a)
+        print('\nEnter a number from the preceding list that you would like to recieve:\n\n\t' + types[0])
+        profession = input('\n\nIf there is nothing remaining to recieve this type of CEU enter "99"\n\t')
+        try:
+            profession = int(profession)
+        except ValueError:
+            print('That is not a valid answer. Try agian?')
+        if profession == 99:
+            check = False
+        elif profession in types_list:
+            types.append(ceu_types[profession])
+            del ceu_types[profession]
+            check = True
+        else:
+            check = True
+    del types[0]
 # User Interface
 
 
@@ -287,25 +309,59 @@ while df.empty:
         input("\nPlease go place the Excel from Eventbrite into the Original Spreadsheet folder. Press enter when finished")
 
 
-# Change to -16 when .exe
+print('\n\n\nLets figure out who should recieve which type of CEUs!')
+
+discipline = 'Please indicate discipline(s) for which you wish to receive CEUs/Certificate of Attendance'
+
+ceus_setup = True
+while ceus_setup:
+    ceu_types = []
+    for i in df[discipline]:
+        if i not in ceu_types:
+            ceu_types.append(i)
+
+    general = ['Certificate of Attendence']
+    social_work = ['Social Work (CEUs)']
+    educator = ['Massachusetts Educator (PDPs)']
+    lmhc = ['Licensed Mental Health Counselor (CEUs)']
+    psych = ['I am a Psychologist']
+
+    ceu_type(social_work)
+    ceu_type(educator)
+    ceu_type(general)
+    ceu_type(lmhc)
+    ceu_type(psych)
+
+    print("\n\n\n\nHere's what we got!\n")
+    print('The following are recieving Social Work (CEUs):')
+    for i in social_work:
+        print('\t' + i)
+    print('The following are recieving Massachusetts Educator (PDPs):')
+    for i in educator:
+        print('\t' + i)
+    print('The following are recieving Licensed Mental Health Counselor (CEUs):')
+    for i in lmhc:
+        print('\t' + i)
+    print('The following are Psychologists:')
+    for i in psych:
+        print('\t' + i)
+    print('The following are recieving Certificates of Attendence:')
+    for i in general:
+        print('\t' + i)
+    setup_check = input('\n\nIs this correct? Please type Yes or No\n\t').title()
+    if setup_check == 'Yes':
+        ceus_setup = False
+    else:
+        ceus_setup = True
+print('\n\t\t***\tGreat!\t')
+
 template_general = os.path.abspath(
     __file__)[:-7] + r'Templates\template_general.docx'
 template_psych = os.path.abspath(
     __file__)[:-7] + r'Templates\template_psych.docx'
 
-
 tier_num = 'Tier ' + tier_num
 tier_num = tier_num + ' Intensive Training in\nCollaborative Problem Solving®'
-
-
-discipline = 'Please indicate discipline(s) for which you wish to receive CEUs/Certificate of Attendance'
-social_work = 'I am a Licensed Social Worker'
-educator = 'I am a Massachusetts Educator'
-general = 'Other, I will need a general certificate of attendance.'
-parent = 'I am a parent; I will not need CEUs'
-lmhc = 'I am a Licensed Mental Health Counselor'
-psych = 'I am a Psychologist'
-
 
 # Run Program
 
@@ -314,7 +370,7 @@ word.Visible = False
 
 
 for i in df.index:
-    if df.loc[i, discipline] == lmhc:
+    if df.loc[i, discipline] in lmhc:
         if not os.path.exists(lmhc_folder + '\documents'):
             os.makedirs(lmhc_folder + '\documents')
         document = Document(template_general)
@@ -333,7 +389,7 @@ for i in df.index:
         doc.SaveAs(pdf_name, FileFormat=17)
         doc.Close()
 
-    if df.loc[i, discipline] == social_work:
+    if df.loc[i, discipline] in social_work:
         if not os.path.exists(social_work_folder + '\documents'):
             os.makedirs(social_work_folder + '\documents')
         document = Document(template_general)
@@ -352,7 +408,7 @@ for i in df.index:
         doc.SaveAs(pdf_name, FileFormat=17)
         doc.Close()
 
-    if df.loc[i, discipline] == educator:
+    if df.loc[i, discipline] in educator:
         if not os.path.exists(educators_folder + '\documents'):
             os.makedirs(educators_folder + '\documents')
         document = Document(template_general)
@@ -371,7 +427,7 @@ for i in df.index:
         doc.SaveAs(pdf_name, FileFormat=17)
         doc.Close()
 
-    if df.loc[i, discipline] == general or df.loc[i, discipline] == parent:
+    if df.loc[i, discipline] in general:
         if not os.path.exists(general_folder + '\documents'):
             os.makedirs(general_folder + '\documents')
         document = Document(template_general)
@@ -390,7 +446,7 @@ for i in df.index:
         doc.SaveAs(pdf_name, FileFormat=17)
         doc.Close()
 
-    if df.loc[i, discipline] == psych:
+    if df.loc[i, discipline] in psych:
         if not os.path.exists(psychology_folder + '\documents'):
             os.makedirs(psychology_folder + '\documents')
         document = Document(template_psych)
