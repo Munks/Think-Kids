@@ -79,7 +79,7 @@ def stuart_sig_general(document):
 
 def stuart_sig_lmhc(document):
     # For General, Social Work, Educator
-    p = document.add_paragraph('\n\n', 'Normal')
+    p = document.add_paragraph('\n\n\n', 'Normal')
     p.add_run('\t\t\t\t\t\t   ')
     p.add_run('      16      ').underline = True
     p.add_run('\t\t\t\t')
@@ -140,7 +140,7 @@ def social_work_cert(document):
         '\nThis training has been approved for 16 Approved Entity Continuing' +
         ' Education hours for relicensure,\nin accordance with 258 CMR.' +
         ' Collaborative of NASW and the Boston College and Simmons School ' +
-        'of Social Work.\nAuthorization Number: D 72498'
+        'of Social Work.\nAuthorization Number: D 72498\n'
     )
     p.alignment = centered
     stuart_sig_general(document)
@@ -185,8 +185,10 @@ def ceu_type(types):
         for a, b in enumerate(ceu_types):
             print('\t' + str(a) + '\t' + str(b))
             types_list.append(a)
-        print('\nEnter a number from the preceding list that you would like to recieve:\n\n\t' + types[0])
-        profession = input('\n\nIf there is nothing remaining to recieve this type of CEU enter "99"\n\t')
+        print(
+            '\nEnter a number from the preceding list that you would like to recieve:\n\n\t' + types[0])
+        profession = input(
+            '\n\nIf there is nothing remaining to recieve this type of CEU enter "99"\n\t')
         try:
             profession = int(profession)
         except ValueError:
@@ -200,9 +202,9 @@ def ceu_type(types):
         else:
             check = True
     del types[0]
+
+
 # User Interface
-
-
 print("\n\n\t\t* * * * * * *   *    *      *")
 print("\t\t      *        * *   *    *")
 print("\t\t      *         *    *  *")
@@ -348,17 +350,20 @@ while ceus_setup:
     print('The following are recieving Certificates of Attendence:')
     for i in general:
         print('\t' + i)
-    setup_check = input('\n\nIs this correct? Please type Yes or No\n\t').title()
+    setup_check = input(
+        '\n\nIs this correct? Please type Yes or No\n\t').title()
     if setup_check == 'Yes':
         ceus_setup = False
     else:
         ceus_setup = True
-print('\n\t\t***\tGreat!\t')
+print('\n\t\t***\tGreat!\t***')
 
 template_general = os.path.abspath(
-    __file__)[:-7] + r'Templates\template_general.docx'
+    os.path.join(
+        os.path.dirname(__file__), r'Templates\template_general.docx'))
 template_psych = os.path.abspath(
-    __file__)[:-7] + r'Templates\template_psych.docx'
+    os.path.join(
+        os.path.dirname(__file__), r'Templates\template_psych.docx'))
 
 tier_num = 'Tier ' + tier_num
 tier_num = tier_num + ' Intensive Training in\nCollaborative Problem Solving®'
