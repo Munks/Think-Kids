@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import datetime as dt
 from redcap import Project
+import os
 import sys
 sys.path.append(r'C:\Python Programs\Think-Kids_Private')
 import tokens as tk
@@ -1312,16 +1313,16 @@ for key, value in readiness_data.items():
                     readiness_columns_staff.append(key)
                     readiness_columns_staff_numbers.append(int(key[5:]))
 
-readiness_columns_admin_numbers.sort()
-readiness_columns_staff_numbers.sort()
+
 admin = organization_data_readiness[readiness_columns_admin].dropna(thresh=13)
-admin = admin.replace(np.nan, 0)
 admin.columns = readiness_columns_admin_numbers
-admin = admin.reset_index().drop(['index'], axis=1).astype(int)
+admin = admin.reset_index().drop(['index'], axis=1)
+admin = admin.reindex(sorted(admin.columns), axis=1)
 staff = organization_data_readiness[readiness_columns_staff].dropna(thresh=10)
-staff = staff.replace(np.nan, 0)
 staff.columns = readiness_columns_staff_numbers
-staff = staff.reset_index().drop(['index'], axis=1).astype(int)
+staff = staff.reset_index().drop(['index'], axis=1)
+staff = staff.reindex(sorted(staff.columns), axis=1)
+
 
 # Can get around 30 participants on each heatmap. Make function that will loop
 # Through the dataframe and make a heatmap for each 40 participant groups
@@ -1334,7 +1335,6 @@ def heat_map(df, group):
     sns.heatmap(
         df,
         annot=True,
-        fmt="d",
         ax=ax,
         robust=True,
         cbar=False,
@@ -1478,6 +1478,8 @@ for i in metadata_readiness_educators.index:
         for i in question:
             questions_admin.append(i)
 add_survey(questions_admin)
+
+os.remove('plt.png')
 
 document.save(organization_dictionary_aim[organization_number_aim] + ' \
 Readiness Report.docx')
