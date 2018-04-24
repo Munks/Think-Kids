@@ -1295,12 +1295,13 @@ paragraph.add_run(
     'CPS Readiness Summary'
 ).underline = True
 paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run('Insert summary rating form after quantitative interviews')
+paragraph.add_run(
+    'Insert summary rating form after quantitative interviews\n\n')
 
 readiness_columns_admin = []
-readiness_columns_admin_numbers = []
+readiness_columns_admin_trunc = []
 readiness_columns_staff = []
-readiness_columns_staff_numbers = []
+readiness_columns_staff_trunc = []
 
 for key, value in readiness_data.items():
     for key, value in value.items():
@@ -1308,28 +1309,65 @@ for key, value in readiness_data.items():
             for key, value in value.items():
                 if 'admin' in key:
                     readiness_columns_admin.append(key)
-                    readiness_columns_admin_numbers.append(int(key[5:]))
+                    for key, value in value.items():
+                        if 'Trunc Question' in key:
+                            readiness_columns_admin_trunc.append(value)
                 elif 'staff' in key:
                     readiness_columns_staff.append(key)
-                    readiness_columns_staff_numbers.append(int(key[5:]))
+                    for key, value in value.items():
+                        if 'Trunc Question' in key:
+                            readiness_columns_staff_trunc.append(value)
 
 
 admin = organization_data_readiness[readiness_columns_admin].dropna(thresh=13)
-admin.columns = readiness_columns_admin_numbers
+admin_columns = []
+for i in readiness_columns_admin_trunc:
+    new = i.split(' ')
+    start = []
+    end = []
+    count = 0
+    for i in new:
+        count += 1
+        if count < 3:
+            start.append(i)
+        if count == 2:
+            start = ' '.join(start)
+        if count > 2:
+            end.append(i)
+    end = ' '.join(end)
+    new_value = start + '\n' + end
+    admin_columns.append(new_value)
 admin = admin.reset_index().drop(['index'], axis=1)
-admin = admin.reindex(sorted(admin.columns), axis=1)
-staff = organization_data_readiness[readiness_columns_staff].dropna(thresh=10)
-staff.columns = readiness_columns_staff_numbers
-staff = staff.reset_index().drop(['index'], axis=1)
-staff = staff.reindex(sorted(staff.columns), axis=1)
+admin.columns = admin_columns
 
+
+staff = organization_data_readiness[readiness_columns_staff].dropna(thresh=10)
+staff_columns = []
+for i in readiness_columns_staff_trunc:
+    new = i.split(' ')
+    start = []
+    end = []
+    count = 0
+    for i in new:
+        count += 1
+        if count < 3:
+            start.append(i)
+        if count == 2:
+            start = ' '.join(start)
+        if count > 2:
+            end.append(i)
+    end = ' '.join(end)
+    new_value = start + '\n' + end
+    staff_columns.append(new_value)
+staff = staff.reset_index().drop(['index'], axis=1)
+staff.columns = staff_columns
 
 # Can get around 30 participants on each heatmap. Make function that will loop
 # Through the dataframe and make a heatmap for each 40 participant groups
 
 
 def heat_map(df, group):
-    height = (df[1].count() * .18) + 1
+    height = (len(df.index) * .18) + 2
     sns.set()
     f, ax = plt.subplots(figsize=(6.5, height))
     sns.heatmap(
@@ -1342,7 +1380,7 @@ def heat_map(df, group):
         vmax=5,
         cmap="YlGnBu")
     plt.title('Readiness Survey Responses Heat Map for ' + group)
-    plt.xlabel('Question Number')
+    plt.xticks(rotation=90)
     plt.ylabel('Participants')
     plt.tight_layout()
     plt.savefig('plt.png')
@@ -1354,10 +1392,10 @@ for i in staff.index:
     x.append(i)
     if i == 0:
         continue
-    if i % 40 == 0:
+    if i % 35 == 0:
         heat_map(staff.loc[x], 'Staff')
         x = []
-if len(x) < 41:
+if len(x) < 36:
     heat_map(staff.loc[x], 'Staff')
 
 x = []
@@ -1365,10 +1403,10 @@ for i in admin.index:
     x.append(i)
     if i == 0:
         continue
-    if i % 40 == 0:
+    if i % 35 == 0:
         heat_map(admin.loc[x], 'Admin')
         x = []
-if len(x) < 41:
+if len(x) < 36:
     heat_map(admin.loc[x], 'Admin')
 
 document.add_page_break()
