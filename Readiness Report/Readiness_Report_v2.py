@@ -20,11 +20,10 @@ import scoring as score
 Code to create a Readiness Report. The data is pulled from REDcap. Data is
 retrieved any of the following three locations:
 
-    "CPS-AIM, Educators' Version"
-        "CPS Readiness Assessment for Schools (1-Part)"
+    "CPS-AIM Repeated"
+        "CPS -AIM Repeated"
 
-    "CPS-AIM, Systems' Version"
-        "CPS Readiness Assessment for Agencies (1-Part)"
+
 
 """
 
@@ -100,52 +99,22 @@ def make_table(table_title, primary_dic, secondary_dic, table_count):
 
 # User Interface Introduction
 print('\n\n')
-print("\t\t* * * * * * *   *    *      *")
-print("\t\t      *        * *   *    *")
-print("\t\t      *         *    *  *")
-print("\t\t      *              **")
-print("\t\t      *         *    *  *")
-print("\t\t      *        * *   *    *")
-print("\t\t      *         *    *      *")
-print("\n\t\t\tReadiness Reports!!\n\n")
+print('\t\t* * * * * * *   *    *      *')
+print('\t\t      *        * *   *    *')
+print('\t\t      *         *    *  *')
+print('\t\t      *              **')
+print('\t\t      *         *    *  *')
+print('\t\t      *        * *   *    *')
+print('\t\t      *         *    *      *')
+print('\n')
+print('\t\t\tReadiness Reports!!\n\n')
 
-
-# Determine if the report is going to be on a system, or a school
-choice_dict = {
-    1: {
-        'type': 'school',
-        'variable': 'tkcote',
-        'count': 32,
-        'Organization Variable AIM': 'org',
-        'Organization Variable Readiness': 'organization'
-    },
-    2: {
-        'type': 'system',
-        'variable': 'tkcots',
-        'count': 36,
-        'Organization Variable AIM': 'organization',
-        'Organization Variable Readiness': 'organization'
-    }
-}
-print('Please choose which type of report you want to generate.\n')
-for key, value in choice_dict.items():
-    print(str(key) + '\t' + value['type'].title())
-
-
-choice = int(input('\n\t'))
-print('Thanks!\n\n\n')
 
 # Pull Tokens depending on which choice was made
 
-if choice == 1:
-    tk.cps_aim_educators()
-elif choice == 2:
-    tk.cps_aim_systems()
+tk.cps_aim_repeated()
 
 # Global Variables
-organization_variable_aim = choice_dict[choice]['Organization Variable AIM']
-organization_variable_readiness = choice_dict[choice][
-    'Organization Variable Readiness']
 current_date = str(dt.date.today().strftime('%m-%d-%Y'))
 
 # Defining the REDcap API Tokens
