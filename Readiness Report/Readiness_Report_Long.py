@@ -20,214 +20,379 @@ import scoring as score
 Code to create a Readiness Report. The data is pulled from REDcap. Data is
 retrieved any of the following three locations:
 
-    "CPS-AIM Repeated"
-        "CPS -AIM Repeated"
+    "CPS-AIM, Educators' Version"
+        "CPS Readiness Assessment for Schools (1-Part)"
 
-
+    "CPS-AIM, Systems' Version"
+        "CPS Readiness Assessment for Agencies (1-Part)"
 
 """
 
 
 # Functions
 
-def meta_cell_content(df, row_name, column_name):
+def cell_content(df, row, column):
     """
-    Retrieve the content of a given cell in the Data Dictionary downlaoded from
-    REDcap
+    This function saves the content of a single cell in a DataFrame as a list
     """
-    dict_name = df.loc[[row_name], [column_name]]
-    dict_name = dict_name[column_name]
-    item = []
-    for i in dict_name:
-        item.append(i)
-    return item
+    content = df.loc[[row], [column]]
+    content = content[column]
+    content_list = []
+    for i in content:
+        content_list.append(i)
+    return content_list
 
 
-def meta_dict(df, row_name):
+def meta_dict(df, row):
     """
     Create a python dictionary from the Data Dictionary downloaded from REDcap
-    df = Data Dictionary DataFrame Pandas Object
-    row_name = Name of Row
-    The column name for this Dictionary is always
-        'select_choices_or_calculations'
+
+    df = Data Dictionary DataFrame Pandas Object.
+    row = name of row in the Data Dictionary where you are looking for
+        dictionary keys and values.
+    The column name in the Data Dictionary is with keys and values is a
+        constant and always 'select_choices_or_calculations'.
     """
-    column_name = 'select_choices_or_calculations'
-    item = meta_cell_content(df, row_name, column_name)
-    dic_key = []
-    dic_val = []
-    for i in item:
-        item = i.split(' | ')
-        for i in item:
-            item = i.split(', ', 1)
+    column = 'select_choices_or_calculations'
+    content = cell_content(df, row, column)
+    dictionary_keys = []
+    dictionary_values = []
+    for i in content:
+        content = i.split(' | ')
+        # Divide the string into lines as displayed in REDcap.
+        for i in content:
+            content = i.split(', ', 1)
+            # Divide the lines into Answer and Key as input in REDcap and save
+            #   as a list.
             a = 0
-            for i in item:
+            for i in content:
+                # First item in the list is the key. Add to the Keys List.
                 if a == 0:
-                    dic_key.append(int(i))
+                    dictionary_keys.append(int(i))
                     a += 1
+                # Second item in the list is the value. Add to the Values List.
                 else:
-                    dic_val.append(i)
-    dict_name = dict(zip(dic_key, dic_val))
-    return dict_name
+                    dictionary_values.append(i)
+    dictionary = dict(zip(dictionary_keys, dictionary_values))
+    return dictionary
 
 
-def font_style(name, size, font_type):
-    font_type = font_type
-    font = document.styles[name].font
-    font.name = font_type
+def font_style(style_name, size, font_name):
+    """
+    style_name = name of the style as it appears in the Word Doc Template
+    size = font size
+    font_name = name of font in Word
+    """
+    font = document.styles[style_name].font
+    font.name = font_name
     font.size = Pt(size)
 
 
-def make_table(table_title, primary_dic, secondary_dic, table_count):
+def make_table(title, primary, secondary, count):
+    """
+    Creates Readiness Report Tables
+
+    title = The title of the table as it will appear in the Word Document.
+    primary = Dictionary with numeric value of the variable and count of how
+    #   many times that variable appears.
+    secondary = Dictionary that links the numeric value of the variable with
+    #   the name as it will appear in the table.
+    count = Count of total of how many times all variables appear.
+    """
     table = document.add_table(rows=1, cols=4, style='Normal Table')
     hdr_cells = table.rows[0].cells
-    hdr_cells[0].paragraphs[0].add_run(table_title).bold = True
+    hdr_cells[0].paragraphs[0].add_run(title).bold = True
     headers = ['Freq', 'Percent', 'Cum.']
-    for count, header in enumerate(headers):
-        hdr_cells[count + 1].paragraphs[0].add_run(header).underline = True
+    for position, header in enumerate(headers):
+        hdr_cells[position + 1].paragraphs[0].add_run(header).underline = True
     total = 0
-    for key, value in primary_dic.items():
+    for key, value in primary.items():
         row_cells = table.add_row().cells
-        row_cells[0].text = secondary_dic[key]
+        row_cells[0].text = secondary[key]
         row_cells[1].text = str(value)
         total += int(value)
-        row_cells[2].text = str(
-            round(float((value / table_count) * 100), 0)) + '%'
-        row_cells[3].text = str(
-            round(float((total / table_count) * 100), 0)) + '%'
+        row_cells[2].text = str(round(float(value / count) * 100, 0)) + '%'
+        row_cells[3].text = str(round(float(total / count) * 100, 0)) + '%'
     set_col_widths(table, 3, 1)
 
 
-# User Interface Introduction
+def stats_dict(df, column):
+    """
+    Creates a dictionary of classic discriptive stats based on column data from
+        the DataFrame.
+
+    df = DataFrame
+    column = Column of data to calculate stats for
+    """
+    dictionary = {'Count': df[column].count(),
+                  'Mean': round(df[column].mean(), 1),
+                  'Standard Deviation': round(df[column].std(), 2),
+                  'Minimum': round(df[column].min(), 2),
+                  'Maximum': round(df[column].max(), 2)
+                  }
+    return dictionary
+
+
+def readiness_tables(dictionary):
+    """
+    Creates the Readiness Tables in the Word Doc based on the given dictionary
+    """
+    table = document.add_table(rows=1, cols=6, style='Normal Table')
+    hdr_cells = table.rows[0].cells
+    headers = ['Variable:', 'Obs', 'Mean', 'Std. Dev.', 'Min', 'Max']
+    for count, header in enumerate(headers):
+        hdr_cells[count].paragraphs[0].add_run(header).underline = True
+    for key, value in dictionary.items():
+        row_cells = table.add_row().cells
+        row_cells[0].paragraphs[0].add_run(key)
+        for x, y in enumerate(value.values()):
+            row_cells[x + 1].text = str(y)
+    set_col_widths(table, 2, 1)
+
+
+def histogram_general(title, df, column):
+    """
+    Creates a single histogram of the column data
+
+    title = Title of the Graph as it will appear in the Word Doc
+    df = location of the data
+    column = column in the data frame with the required data
+    """
+    plt.figure(figsize=(3, 3))
+    df[column].plot.hist(bins=np.linspace(1, 5, 9))
+    plt.title(title, fontsize=14)
+    plt.xticks((1, 2, 3, 4, 5))
+    plt.tight_layout()
+    plt.savefig('plt.png')
+    paragraph.add_run().add_picture('plt.png')
+
+
+def histogram_by(title, df, column, sort_by):
+    """
+    Creates multiple histograms of the column data broken down by role
+
+    title = Title of the Graph as it will appear in the Word Doc
+    df = location of the data
+    column = column in the data frame with the required data
+    sort_by = the column used to catagorize the data
+    """
+    paragraph = document.add_paragraph('', style='Body Text')
+    paragraph.add_run(title).underline = True
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    plt.figure()
+    df[column].hist(
+        figsize=(6.4, count_role_graphs),
+        by=df[sort_by],
+        bins=np.linspace(1, 5, 9),
+        layout=(unique_rolestaff, 2),
+        sharey=True,
+        sharex=True,
+        xrot=90)
+    plt.xticks((1, 2, 3, 4, 5))
+    plt.tight_layout()
+    plt.savefig('plt.png')
+    paragraph.add_run().add_picture('plt.png')
+    document.add_page_break()
+
+
+def detailed_report(kind):
+    table = document.add_table(rows=1, cols=6, style='Normal Table')
+    hdr_cells = table.rows[0].cells
+    headers = ['Question:', 'Obs', 'Mean', 'Std. Dev.', 'Min', 'Max']
+    for count, header in enumerate(headers):
+        hdr_cells[count].paragraphs[0].add_run(header).underline = True
+    for key, value in readiness_data.items():
+        row_cells = table.add_row().cells
+        row_cells[0].paragraphs[0].add_run(key).bold = True
+        for key, value in value.items():
+            if kind.title() in key:
+                for key, value in value.items():
+                    if kind.lower() in key:
+                        question_number = key[5:]
+                        for key, value in value.items():
+                            if key == 'Trunc Question':
+                                row_cells = table.add_row().cells
+                                row_cells[0].paragraphs[0].add_run(
+                                    str(question_number) + ') ' + value)
+                            if key == 'Stats':
+                                for x, value in enumerate(value.values()):
+                                    row_cells[x + 1].text = str(value)
+    set_col_widths(table, 2.9, .9)
+
+
+def heat_map(df, group):
+    """
+    Create the Heat Map of our data. This shows how each participant answered
+        on the readiness measure
+    """
+    height = (len(df.index) * .18) + 2
+    sns.set()
+    f, ax = plt.subplots(figsize=(6.5, height))
+    sns.heatmap(
+        df,
+        annot=True,
+        ax=ax,
+        robust=True,
+        cbar=False,
+        vmin=1,
+        vmax=5,
+        cmap="YlGnBu")
+    plt.title('Readiness Survey Responses Heat Map for ' + group)
+    plt.xticks(rotation=90)
+    plt.ylabel('Participants')
+    plt.tight_layout()
+    plt.savefig('plt.png')
+    paragraph.add_run().add_picture('plt.png')
+
+
+def add_survey(job_type):
+    """
+    This adds the appendix surveys to the end of the Word Document
+    """
+    count = 0
+    for i in job_type:
+        count += 1
+        paragraph = document.add_paragraph(str(count) + ') ', style='Normal')
+        paragraph.add_run(i)
+        if count in [1, 2, 5, 6, 7, 8]:
+            paragraph.add_run(' (Motivation for Change)')
+        elif count in [3, 4]:
+            paragraph.add_run(' (CPS Capacity)')
+        else:
+            paragraph.add_run(' (General Capacity)')
+        if count in [5, 13]:
+            paragraph.add_run(' (Reversed)')
+
+
+# User Interface
+#   Think:Kids
 print('\n\n')
-print('\t\t* * * * * * *   *    *      *')
-print('\t\t      *        * *   *    *')
-print('\t\t      *         *    *  *')
-print('\t\t      *              **')
-print('\t\t      *         *    *  *')
-print('\t\t      *        * *   *    *')
-print('\t\t      *         *    *      *')
-print('\n')
-print('\t\t\tReadiness Reports!!\n\n')
-
-
-# Pull Tokens depending on which choice was made
+print("\t\t* * * * * * *   *    *      *")
+print("\t\t      *        * *   *    *")
+print("\t\t      *         *    *  *")
+print("\t\t      *              **")
+print("\t\t      *         *    *  *")
+print("\t\t      *        * *   *    *")
+print("\t\t      *         *    *      *")
+print("\n\t\t\tReadiness Reports!!\n\n")
 
 tk.cps_aim_repeated()
 
+
 # Global Variables
+#   In the CPS-AIM, one survey has the variable for the question:
+#       'What group or organization asked you to fill out this form?'
+#   as organization, the other as org, this variable differentiates between the
+#   two options.
+cps_aim_org = 'org'
+#   In the Readiness Assessment this variable is 'organization' for both
+#   surveys
+cps_readiness_org = 'organization'
+#   Current Date
 current_date = str(dt.date.today().strftime('%m-%d-%Y'))
 
-# Defining the REDcap API Tokens
-# Call these functions immediately before pulling the REDcap Data corresponding
-# to these projects. Only the most recent call will be available.
-# "CPS-AIM"
-project = Project(tk.api_url, tk.api_token)
-data_cps_aim = project.export_records(format='df')
-metadata_cps_aim = project.export_metadata(format='df')
 
-organization_dictionary_aim = meta_dict(
-    metadata_cps_aim, organization_variable_aim
-)
+# Download the CPS-AIM off of REDcap
+project = Project(tk.api_url, tk.api_token)
+# CPS-AIM Data
+cps_aim_df = project.export_records(format='df')
+# CPS-AIM MetaData
+meta_df = project.export_metadata(format='df')
+
+organization_dictionary_aim = meta_dict(meta_df, cps_aim_org)
 
 # User Interface
-print("The organizations listed in the CPS-AIM, \
-" + choice_dict[choice]['type'].title() + "s' Version are as follows.")
+#   Ask the User what organization they are generating a report for.
+print("The organizations listed in the CPS-AIM, Longitudinal\
+ Version are as follows.")
 for key, value in organization_dictionary_aim.items():
     print(str(key) + '\t' + value)
-organization_number_aim = int(input("Please enter the Organizations Number to \
+cps_aim_choice = int(input("Please enter the Organizations Number to \
 generate a report on.\n\t"))
 print('Thanks!\n\n\n')
 
-# Retrieving and sorting the AIM Data from REDcap
-data_cps_aim.reset_index(inplace=True)
-organization_data_aim = data_cps_aim[
-    data_cps_aim[organization_variable_aim] == organization_number_aim
-]
+# Save the organization name
+org = organization_dictionary_aim[cps_aim_choice]
 
-# Remove participants who did not answer at least 20 questions
-organization_data_aim = organization_data_aim.dropna(thresh=20)
+# Retrieving and sorting the AIM Data from REDcap
+cps_aim_df.reset_index(inplace=True)
+cps_aim_df = cps_aim_df[cps_aim_df[cps_aim_org] == cps_aim_choice]
+
+# Replace any N/A answers (9) with np.nan so that the data is not skewed
+cps_aim_df = cps_aim_df.replace(9, np.nan)
+
+# Remove participants who did not answer at least 30 questions
+cps_aim_df.dropna(thresh=30, inplace=True)
 
 # Sub School
 # Only if there is a Sub School Question. Every school moving forward will have
 # a Sub School Question
 sub_org_column = []
-for x, i in enumerate(metadata_cps_aim['branching_logic']):
+for x, i in enumerate(meta_df['branching_logic']):
     # Check the branching logic field in the Data Dictionary to see if the
     # Organization we entered is present
-    if '[' + organization_variable_aim + '] = ' + "'" + str(
-            organization_number_aim) + "'" in str(i):
-        sub_org_column.append(metadata_cps_aim.index[x])
+    if '[' + cps_aim_org + '] = ' + "'" + str(
+            cps_aim_choice) + "'" in str(i):
+        sub_org_column.append(meta_df.index[x])
 
 sub_org_dict = {}
 for i in sub_org_column:
     sub_org_column = i
-    sub_org_dict = meta_dict(metadata_cps_aim, i)
-    sub_org_count = organization_data_aim[i].value_counts().to_dict()
-    sub_org_survey_count = organization_data_aim[i].count()
+    sub_org_dict = meta_dict(meta_df, i)
+    sub_org_count = cps_aim_df[i].value_counts().to_dict()
+    sub_org_survey_count = cps_aim_df[i].count()
 
-
-print("Do you want to break down the data by sub-catagory?")
-for key, value in sub_org_dict.items():
-    print(str(key) + '\t' + value)
-organization_number_aim = int(input("Please enter the sub-catagory \
+# User Interface
+#   Ask the user if they want to break the data down by Sub-Catagory.
+sub_check = int(input(
+    "Do you want to break down the data by sub-catagory?\n1\tYes\n2\tNo\n\t"))
+print('\nThanks!\n\n\n')
+# 1 = Yes, 2 = No
+# If Yes, ask the user which sub-catagory they would like to generate a report
+#   for. If No, the code will skip this.
+if sub_check == 1:
+    for key, value in sub_org_dict.items():
+        print(str(key) + '\t' + value)
+    cps_aim_choice = int(input("Please enter the sub-catagory \
 number to generate a report on.\n\t"))
-print('Thanks!\n\n\n')
-
-organization_data_aim = organization_data_aim[
-    organization_data_aim[
-        sub_org_column] == organization_number_aim
-]
-
-# Replace any N/A answers (9) with np.nan so that the data is not skewed
-organization_data_aim = organization_data_aim.replace(9, np.nan)
+    print('Thanks!\n\n\n')
+    cps_aim_df = cps_aim_df[cps_aim_df[sub_org_column] == cps_aim_choice]
+    org = str(org) + ', ' + str(sub_org_dict[cps_aim_choice])
 
 # Variables from AIM Data Set
 
 # Role variables
-role_dictionary_aim = meta_dict(metadata_cps_aim, 'role')
-role_count_aim = organization_data_aim['role'].value_counts().to_dict()
-role_survey_count_aim = organization_data_aim['role'].count()
-
+role_dictionary_aim = meta_dict(meta_df, 'rolee')
+role_count_aim = cps_aim_df['rolee'].value_counts().to_dict()
+role_survey_count_aim = cps_aim_df['rolee'].count()
 # Get a count of how many participants responded to the survey and answered
 # at least 20 questions.
-survey_count_aim = organization_data_aim.record_id.count()
-
-
-# Training Dictionary
-training_columns = ['received_training', 'intro_training', 'tier_one_training']
+survey_count_aim = cps_aim_df.record_id.count()
 
 # Create a dataframe of just the training columns
-training = organization_data_aim[training_columns]
+training = cps_aim_df.training
 
 # Sort the information into a dictionary
 training_dictionary = {
     'No Training': 0,
     'Not Sure': 0,
-    'Introductory Training': 0,
-    'Tier One Training': 0
+    'Recieved Training': 0,
 }
 
 # Build a count of the total number of people who answered anything about
 # training
 training_total = 0
-for i in training['received_training']:
+for i in training:
     # An answer of 0 means they recieved no training
-    if i == 0:
+    if i == 2:
         training_dictionary['No Training'] += 1
         training_total += 1
     # An answer of 2 means they are not sure
-    if i == 2:
+    if i == 200:
         training_dictionary['Not Sure'] += 1
         training_total += 1
-for i in training['intro_training']:
-    # An answer of 1 means they recieved Intro Training
     if i == 1:
-        training_dictionary['Introductory Training'] += 1
-        training_total += 1
-for i in training['tier_one_training']:
-    # An answer of 1 means they recieved Tier One Training
-    if i == 1:
-        training_dictionary['Tier One Training'] += 1
+        training_dictionary['Recieved Training'] += 1
         training_total += 1
 
 
@@ -240,6 +405,7 @@ character_styles = [s for s in styles if s.type == WD_STYLE_TYPE.CHARACTER]
 table_styles = [s for s in styles if s.type == WD_STYLE_TYPE.TABLE]
 
 font_style('Normal', 12, 'Times New Roman')
+font_style('No Spacing', 12, 'Times New Roman')
 font_style('Body Text', 14, 'Times New Roman')
 font_style('Body Text 2', 18, 'Times New Roman')
 font_style('Title', 16, 'Times New Roman')
@@ -254,7 +420,7 @@ paragraph.add_run(
     '\n\n\nCPS Readiness Report'
 ).bold = True
 paragraph.add_run(
-    '\n\nOrganization: ' + organization_dictionary_aim[organization_number_aim]
+    '\n\nOrganization: ' + org
 ).bold = True
 paragraph.add_run(
     '\n\nDate Prepared: ' + current_date
@@ -402,8 +568,7 @@ paragraph.add_run(
 CPS Adherence and Impact Measure Survey in a valid and reliable way. The \
 quantitative analyses on the next few pages of this report are based on data \
 collected from those respondents. The respondents are broken down by \
-' + choice_dict[choice]['type'] + ', job role, and CPS training status as follows\
-:\n'
+program, job role, and CPS training status as follows:\n'
 )
 
 
@@ -462,56 +627,135 @@ document.add_page_break()
 
 
 # The CPS Adherence and Impact Measure (CPS-AIM)
-paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    '\tScores range from 1=Strongly Disagree to 7=Strongly Agree. \
+
+
+def cps_aim_plot():
+    plt.figure()
+    results[results.columns[1:4]].mean().plot.bar(width=.9)
+    plt.suptitle('CPS Adherence and Impact Measure', fontsize=14)
+    plt.title('Pre-Training Score', fontsize=10)
+    plt.xticks((0, 1, 2),
+               ('Adherence', 'Positive Impact', 'Burnout'),
+               rotation=0)
+    plt.ylim(ymax=7, ymin=1)
+    plt.axhline(y=4, color='r', linestyle='-')
+    plt.ylabel('Mean Score')
+    plt.savefig('plt.png')
+
+
+# Creating the CPS AIM Graph for Pre-Training
+# Score the CPS AIM
+cps_aime_cols = []
+
+for i in cps_aim_df.columns:
+    if 'cpsaime' in i:
+        cps_aime_cols.append(i)
+
+cps_aime_cols.append('record_id')
+
+new_cps_aime_columns = []
+
+for i in range(32):
+    new_cps_aime_columns.append('tkcot_' + str(i + 1))
+
+new_cps_aime_columns.remove('tkcot_11')
+new_cps_aime_columns.append('record_id')
+
+cps_aime_df = cps_aim_df[cps_aime_cols]
+
+cps_aime_df.columns = new_cps_aime_columns
+
+cps_aime_df = cps_aime_df.dropna(thresh=5)
+
+results = []
+results = score.cps_aim_educator(cps_aime_df, results, 'record_id')
+
+if not results.empty:
+    paragraph = document.add_paragraph('', style='Normal')
+    paragraph.add_run(
+        '\tScores range from 1=Strongly Disagree to 7=Strongly Agree. \
 In the graph below, the horizontal line indicates a score of 4, which is \
 “Not Sure.” The goal is to be far above the horizontal line in Adherence to \
 CPS Philosophy and Perceptions of Positive Impact, and far below the \
 horizontal line in Burnout.'
-)
+    )
+    cps_aim_plot()
+    document.add_picture('plt.png')
 
-# Creating the CPS AIM Graph for Pre-Training
-# Score the CPS AIM
-cps_aim_columns = ['record_id']
-for column in organization_data_aim.columns:
-    if choice_dict[choice]['variable'] in column[:-4]:
-        name = column[:]
-        cps_aim_columns.append(name)
-cps_aim = organization_data_aim[cps_aim_columns]
-cps_aim_columns_2 = ['record_id']
-for i in range(choice_dict[choice]['count']):
-    cps_aim_columns_2.append('tkcot_' + str(i + 1))
-cps_aim.columns = cps_aim_columns_2
+    # Adding the Summary: section, to be filled out later by Alisha
+    paragraph = document.add_paragraph('', style='Normal')
+    paragraph.add_run('Summary:').bold = True
+    paragraph.add_run(' As a whole...')
+    document.add_page_break()
+
+
+cps_aims_cols = []
+
+for i in cps_aim_df.columns:
+    if 'cpsaims' in i:
+        cps_aims_cols.append(i)
+
+cps_aims_cols.append('record_id')
+
+new_cps_aims_columns = []
+
+for i in range(36):
+    new_cps_aims_columns.append('tkcot_' + str(i + 1))
+
+new_cps_aims_columns.remove('tkcot_30')
+new_cps_aims_columns.remove('tkcot_29')
+new_cps_aims_columns.append('record_id')
+
+cps_aims_df = cps_aim_df[cps_aims_cols]
+
+cps_aims_df.columns = new_cps_aims_columns
+
+cps_aims_df = cps_aims_df.dropna(thresh=5)
+
 results = []
+results = score.cps_aim_systems(cps_aims_df, results, 'record_id')
+
+if not results.empty:
+    paragraph = document.add_paragraph('', style='Normal')
+    paragraph.add_run(
+        '\tScores range from 1=Strongly Disagree to 7=Strongly Agree. \
+In the graph below, the horizontal line indicates a score of 4, which is \
+“Not Sure.” The goal is to be far above the horizontal line in Adherence to \
+CPS Philosophy and Perceptions of Positive Impact, and far below the \
+horizontal line in Burnout.'
+    )
+    cps_aim_plot()
+    document.add_picture('plt.png')
+
+    # Adding the Summary: section, to be filled out later by Alisha
+    paragraph = document.add_paragraph('', style='Normal')
+    paragraph.add_run('Summary:').bold = True
+    paragraph.add_run(' As a whole...')
+    document.add_page_break()
+
+# Part 2!
+# "CPS Readiness Assessment (1-Part)"
+
+# Determine if the report is going to be on a system, or a school
+choice_dict = {
+    1: 'school',
+    2: 'system',
+}
+
+
+# User Interface
+#   Ask the User if they are generating a report on systems, or schools
+print('Please choose which type of report you want to generate.\n')
+for key, value in choice_dict.items():
+    print(str(key) + '\t' + value.title())
+choice = int(input('\n\t'))
+print('Thanks!\n\n\n')
+
+# Pull REDcap Token depending on user choice
 if choice == 1:
-    results = score.cps_aim_educator(cps_aim, results, 'record_id')
+    tk.cps_aim_educators()
 elif choice == 2:
-    results = score.cps_aim_systems(cps_aim, results, 'record_id')
-
-# Creating the CPS Adherence and Impact Measure Bar Graph
-plt.figure()
-results[results.columns[1:4]].mean().plot.bar(width=.9)
-plt.suptitle('CPS Adherence and Impact Measure', fontsize=14)
-plt.title('Pre-Training Score', fontsize=10)
-plt.xticks((0, 1, 2),
-           ('Adherence', 'Positive Impact', 'Burnout'),
-           rotation=0)
-plt.ylim(ymax=7, ymin=1)
-plt.axhline(y=4, color='r', linestyle='-')
-plt.ylabel('Mean Score')
-plt.savefig('plt.png')
-document.add_picture('plt.png')
-
-# Adding the Summary: section, to be filled out later by Alisha
-paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    'Summary:'
-).bold = True
-paragraph.add_run(
-    ' As a whole...'
-)
-document.add_page_break()
+    tk.cps_aim_systems()
 
 # Part 2!
 # "CPS Readiness Assessment (1-Part)"
@@ -529,101 +773,89 @@ organization_dictionary_readiness = meta_dict(
 
 # Download the corresponding Readiness Survey Data
 print("The organizations listed in the CPS Readiness Assessment for \
-" + choice_dict[choice]['type'].title() + "s (1-Part) are as follows.")
+" + choice_dict[choice].title() + "s (1-Part) are as follows.")
 for key, value in organization_dictionary_readiness.items():
     print(str(key) + '\t' + value)
-organization_number_readiness = int(input("Please enter the Organizations \
+org_number_readiness = int(input("Please enter the Organizations \
 Number to generate a report on.\n\t"))
 print('Thanks!\n\n\n')
 
 # Retrieving and sorting the Readiness Data from REDcap
 data_readiness.reset_index(inplace=True)
-organization_data_readiness = data_readiness[
-    data_readiness['organization'] == organization_number_readiness
+org_data_readiness = data_readiness[
+    data_readiness['organization'] == org_number_readiness
 ]
-organization_data_readiness = organization_data_readiness.dropna(thresh=15)
+org_data_readiness = org_data_readiness.dropna(thresh=15)
 
 
 # Sub School
 sub_org_column = []
 for x, i in enumerate(metadata_readiness['branching_logic']):
-    if '[' + organization_variable_readiness + '] = ' + "'" + str(
-            organization_number_readiness) + "'" in str(i):
+    if '[' + cps_readiness_org + '] = ' + "'" + str(
+            org_number_readiness) + "'" in str(i):
         sub_org_column.append(metadata_readiness.index[x])
 sub_org_dict = {}
 for i in sub_org_column:
     sub_org_column = i
     sub_org_dict = meta_dict(metadata_readiness, i)
-    sub_org_count = organization_data_readiness[i].value_counts().to_dict()
-    sub_org_survey_count = organization_data_readiness[i].count()
+    sub_org_count = org_data_readiness[i].value_counts().to_dict()
+    sub_org_survey_count = org_data_readiness[i].count()
 
-print("Do you want to break down the data by sub-catagory?")
-for key, value in sub_org_dict.items():
-    print(str(key) + '\t' + value)
-organization_number_readiness = int(input("Please enter the sub-catagory \
-number to generate a report on.\n\t"))
-print('Thanks!\n\n\n')
+if sub_check == 1:
+    for key, value in sub_org_dict.items():
+        print(str(key) + '\t' + value)
+    org_number_readiness = int(input("Please enter the sub-catagory \
+    number to generate a report on.\n\t"))
+    print('Thanks!\n\n\n')
 
 # Retrieving and sorting the Readiness Data from REDcap
-print(organization_data_readiness)
-organization_data_readiness = organization_data_readiness[
-    organization_data_readiness[
-        sub_org_column] == organization_number_readiness
-]
-print(organization_data_readiness)
+    org_data_readiness = org_data_readiness[
+        org_data_readiness[sub_org_column] == org_number_readiness]
+
 # Remove participants who did not answer at least 15 questions
 
 # Replace any N/A answers (9) with np.nan so that the data is not skewed
-organization_data_readiness = organization_data_readiness.replace(9, np.nan)
+org_data_readiness = org_data_readiness.replace(9, np.nan)
 
 # Reverse the Reverse scored columns
 reverse = [
     'staff5', 'staff13', 'admin5', 'admin13'
 ]
 for i in reverse:
-    organization_data_readiness[i].replace(
+    org_data_readiness[i].replace(
         [1, 2, 3, 4, 5], [5, 4, 3, 2, 1],
         inplace=True)
 # Variables from Readiness Data Set
 
 # Get a count of how many participants responded to the survey and answered
 # at least 15 questions.
-survey_count_readiness = organization_data_readiness.record_id.count()
+survey_count_readiness = org_data_readiness.record_id.count()
 
 # Role variables
-role_dictionary_readiness = meta_dict(
-    metadata_readiness, 'rolestaff')
+role_dictionary_readiness = meta_dict(metadata_readiness, 'rolestaff')
 role_count_readiness = (
-    organization_data_readiness['rolestaff'].value_counts().to_dict()
-)
-role_survey_count_readiness = organization_data_readiness['rolestaff'].count()
+    org_data_readiness['rolestaff'].value_counts().to_dict())
+role_survey_count_readiness = org_data_readiness['rolestaff'].count()
 
 # Years at Organization Dictionary - Readiness
 years_at_org = meta_dict(metadata_readiness, 'yearsatorg')
 years_at_org_count = (
-    organization_data_readiness['yearsatorg'].value_counts().to_dict())
-years_at_org_total_count = organization_data_readiness['yearsatorg'].count()
+    org_data_readiness['yearsatorg'].value_counts().to_dict())
+years_at_org_total_count = org_data_readiness['yearsatorg'].count()
 # Training Dictionary
 training_dictionary = meta_dict(metadata_readiness, 'training')
-training_count = (
-    organization_data_readiness['training'].value_counts().to_dict())
-training_total_count = organization_data_readiness['training'].count()
+training_count = (org_data_readiness['training'].value_counts().to_dict())
+training_total_count = org_data_readiness['training'].count()
 
 # CPS Readiness Assessment
 paragraph = document.add_paragraph('', style='Body Text')
-paragraph.add_run(
-    'The CPS Readiness Survey'
-).bold = True
+paragraph.add_run('The CPS Readiness Survey').bold = True
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
     '\tEvaluating readiness to implement an evidence-informed \
 approach like CPS revolves around several factors. These include an agency’s ')
-paragraph.add_run(
-    'motivation for change, its general capacity'
-).italic = True
-paragraph.add_run(
-    ' for implementation of any intervention, and its '
-)
+paragraph.add_run('motivation for change, its general capacity').italic = True
+paragraph.add_run(' for implementation of any intervention, and its ')
 paragraph.add_run(
     'specific capacity for implementation of the intervention in question'
 ).italic = True
@@ -632,27 +864,19 @@ paragraph.add_run(
 agency.'
 )
 paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    '\tUnder the category of '
-)
-paragraph.add_run(
-    'Motivation for Change'
-).bold = True
+paragraph.add_run('\tUnder the category of ')
+paragraph.add_run('Motivation for Change').bold = True
 paragraph.add_run(
     ', we assess whether the administrators/leaders as well as other staff \
 see the need, and have enthusiasm for, a different or additional approach. ')
-paragraph.add_run(
-    'Capacity in General'
-).bold = True
+paragraph.add_run('Capacity in General').bold = True
 paragraph.add_run(
     ' refers to things such as whether staff feel appropriately supported and \
 satisfied with their work, whether sufficient supervision, communication and \
 documentation structures are in place, and whether there is strong leadership \
 present to facilitate implementation. '
 )
-paragraph.add_run(
-    'Capacity for CPS'
-).bold = True
+paragraph.add_run('Capacity for CPS').bold = True
 paragraph.add_run(
     ' refers to a site’s ability to implement CPS in particular. For example, \
 because CPS typically requires a significant shift in mindset, culture, and \
@@ -671,15 +895,13 @@ innovation (Scaccia et al., 2015). ')
 document.add_page_break()
 
 paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    'Survey Responders:'
-).bold = True
+paragraph.add_run('Survey Responders:').bold = True
 paragraph.add_run(
     '\n\t' + str(survey_count_readiness) + ' total staff members responded to \
 our CPS Readiness Surveys in a valid and reliable way. The quantitative \
 analyses on the next few pages of this report are based on data collected \
 from those respondents. The respondents are broken down by \
-' + choice_dict[choice]['type'] + ', job role, years of employment, and CPS \
+' + choice_dict[choice] + ', job role, years of employment, and CPS \
 training status as follows:'
 )
 
@@ -725,15 +947,13 @@ document.add_page_break()
 
 # Readiness Survey Results, for All Employees
 paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    'Readiness Survey Results, for All Employees'
-).bold = True
+paragraph.add_run('Readiness Survey Results, for All Employees').bold = True
 
 # Score the Readiness Survey
 # Score the Educators Version
 results_educators = []
 results_educators = score.cps_readiness_educator(
-    organization_data_readiness,
+    org_data_readiness,
     results_educators,
     'record_id')
 results_educators = results_educators.dropna(thresh=3)
@@ -741,7 +961,7 @@ results_educators = results_educators.dropna(thresh=3)
 # Score the Admin Version
 results_admin = []
 results_admin = score.cps_readiness_admin(
-    organization_data_readiness,
+    org_data_readiness,
     results_admin,
     'record_id')
 results_admin = results_admin.dropna(thresh=3)
@@ -750,313 +970,140 @@ frames = [results_educators, results_admin]
 results = pd.concat(frames)
 
 # Add the scored columns back into the main DataFrame.
-organization_data_readiness = pd.merge(
-    left=organization_data_readiness,
+org_data_readiness = pd.merge(
+    left=org_data_readiness,
     right=results,
     left_on='record_id',
     right_on='id')
 
 # CPS Readiness Measure Score Variables.
-
-
-def stats_dict(df, column):
-    dictionary = {'Count': df[column].count(),
-                  'Mean': round(df[column].mean(), 1),
-                  'Standard Deviation': round(df[column].std(), 2),
-                  'Minimum': round(df[column].min(), 2),
-                  'Maximum': round(df[column].max(), 2)
-                  }
-    return dictionary
-
-
+motivation_dict_admin = {
+    'admin1': 'Policies need improvement',
+    'admin2': 'CPS is improvement',
+    'admin5': 'CPS too hard (reversed)',
+    'admin6': 'Leaders want all in',
+    'admin7': 'CPS consistent with values',
+    'admin8': 'CPS consistent with practice'
+}
+motivation_dict_staff = {
+    'staff1': 'Policies need improvement',
+    'staff2': 'CPS is improvement',
+    'staff5': 'CPS too hard (reversed)',
+    'staff6': 'Leaders want all in',
+    'staff7': 'CPS consistent with values',
+    'staff8': 'CPS consistent with practice'
+}
+general_capacity_dict_admin = {
+    'admin9': 'We encourage innovation',
+    'admin10': 'Staff want to learn more',
+    'admin11': 'Staff supported by leaders',
+    'admin12': 'Staff communicate well',
+    'admin13': 'Too many interventions (reversed)',
+}
+general_capacity_dict_staff = {
+    'staff9': 'We encourage innovation',
+    'staff10': 'Staff want to learn more',
+    'staff11': 'Staff supported by leaders',
+    'staff12': 'Staff communicate well',
+    'staff13': 'Too many interventions (reversed)',
+}
+cps_capacity_dict_admin = {
+    'admin3': 'Leaders are committed',
+    'admin4': 'Internal CPS team',
+    'admin14': 'Financially committed',
+}
+cps_capacity_dict_staff = {
+    'staff3': 'Leaders are committed',
+    'staff4': 'Internal CPS team',
+}
 # BIG DICTIONARY OF READINESS INFORMATION!!!
 readiness_data = {
     'Motivation': {
         'All Staff': {
             'Overall Stats': stats_dict(
-                organization_data_readiness, 'readiness_motiv_mean'),
+                org_data_readiness, 'readiness_motiv_mean'),
         },
         'Administration': {
             'Overall': stats_dict(
-                results_admin, 'readiness_motiv_mean'),
-            'admin1': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin1',
-                    'field_label'),
-                'Trunc Question': 'Policies need improvement',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin1')
-            },
-            'admin2': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin2',
-                    'field_label'),
-                'Trunc Question': 'CPS is improvement',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin2')
-            },
-            'admin5': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin5',
-                    'field_label'),
-                'Trunc Question': 'CPS too hard (reversed)',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin5')
-            },
-            'admin6': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin6',
-                    'field_label'),
-                'Trunc Question': 'Leaders want all in',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin6')
-            },
-            'admin7': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin7',
-                    'field_label'),
-                'Trunc Question': 'CPS consistent with values',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin7')
-            },
-            'admin8': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin8',
-                    'field_label'),
-                'Trunc Question': 'CPS consistent with practice',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin8')
-            },
+                results_admin, 'readiness_motiv_mean')
         },
         'Staff': {
             'Overall': stats_dict(
-                results_educators, 'readiness_motiv_mean'),
-            'staff1': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff1',
-                    'field_label'),
-                'Trunc Question': 'Policies need improvement',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff1')
-            },
-            'staff2': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff2',
-                    'field_label'),
-                'Trunc Question': 'CPS is improvement',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff2')
-            },
-            'staff5': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff5',
-                    'field_label'),
-                'Trunc Question': 'CPS too hard (reversed)',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff5')
-            },
-            'staff6': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff6',
-                    'field_label'),
-                'Trunc Question': 'Leaders want all in',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff6')
-            },
-            'staff7': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff7',
-                    'field_label'),
-                'Trunc Question': 'CPS consistent with values',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff7')
-            },
-            'staff8': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff8',
-                    'field_label'),
-                'Trunc Question': 'CPS consistent with practice',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff8')
-            },
+                results_educators, 'readiness_motiv_mean')
         }
     },
     'General Capacity': {
         'All Staff': {
             'Overall Stats': stats_dict(
-                organization_data_readiness, 'readiness_capacity_mean'),
+                org_data_readiness, 'readiness_capacity_mean'),
         },
         'Administration': {
             'Overall': stats_dict(
-                results_admin, 'readiness_capacity_mean'),
-            'admin9': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin9',
-                    'field_label'),
-                'Trunc Question': 'We encourage innovation',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin9')
-            },
-            'admin10': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin10',
-                    'field_label'),
-                'Trunc Question': 'Staff want to learn more',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin10')
-            },
-            'admin11': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin11',
-                    'field_label'),
-                'Trunc Question': 'Staff supported by leaders',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin11')
-            },
-            'admin12': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin12',
-                    'field_label'),
-                'Trunc Question': 'Staff communicate well',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin12')
-            },
-            'admin13': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin13',
-                    'field_label'),
-                'Trunc Question': 'Too many interventions (reversed)',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin13')
-            },
+                results_admin, 'readiness_capacity_mean')
         },
         'Staff': {
             'Overall': stats_dict(
-                results_educators, 'readiness_capacity_mean'),
-            'staff9': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff9',
-                    'field_label'),
-                'Trunc Question': 'We encourage innovation',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff9')
-            },
-            'staff10': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff10',
-                    'field_label'),
-                'Trunc Question': 'Staff want to learn more',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff10')
-            },
-            'staff11': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff11',
-                    'field_label'),
-                'Trunc Question': 'Staff supported by leaders',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff11')
-            },
-            'staff12': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff12',
-                    'field_label'),
-                'Trunc Question': 'Staff communicate well',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff12')
-            },
-            'staff13': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff13',
-                    'field_label'),
-                'Trunc Question': 'Too many interventions (reversed)',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff13')
-            },
+                results_educators, 'readiness_capacity_mean')
         }
     },
     'CPS Capacity': {
         'All Staff': {
             'Overall Stats': stats_dict(
-                organization_data_readiness, 'readiness_cps_cap_mean'),
+                org_data_readiness, 'readiness_cps_cap_mean'),
         },
         'Administration': {
             'Overall': stats_dict(
-                results_admin, 'readiness_cps_cap_mean'),
-            'admin3': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin3',
-                    'field_label'),
-                'Trunc Question': 'Leaders are committed',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin3')
-            },
-            'admin4': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin4',
-                    'field_label'),
-                'Trunc Question': 'Internal CPS team',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin4')
-            },
-            'admin14': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'admin14',
-                    'field_label'),
-                'Trunc Question': 'Financially committed',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'admin14')
-            }
+                results_admin, 'readiness_cps_cap_mean')
         },
         'Staff': {
             'Overall': stats_dict(
-                results_educators, 'readiness_cps_cap_mean'),
-            'staff3': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff3',
-                    'field_label'),
-                'Trunc Question': 'Leaders are committed',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff3')
-            },
-            'staff4': {
-                'Full Question': meta_cell_content(
-                    metadata_readiness,
-                    'staff4',
-                    'field_label'),
-                'Trunc Question': 'Internal CPS team',
-                'Stats': stats_dict(
-                    organization_data_readiness, 'staff4')
-            }
+                results_educators, 'readiness_cps_cap_mean')
         }
     }
 }
+
+
+for key, value in motivation_dict_admin.items():
+    readiness_data['Motivation']['Administration'][key] = {
+        'Full Question': cell_content(metadata_readiness, key, 'field_label'),
+        'Trunc Question': value,
+        'Stats': stats_dict(org_data_readiness, key)
+    }
+
+for key, value in motivation_dict_staff.items():
+    readiness_data['Motivation']['Staff'][key] = {
+        'Full Question': cell_content(metadata_readiness, key, 'field_label'),
+        'Trunc Question': value,
+        'Stats': stats_dict(org_data_readiness, key)
+    }
+
+for key, value in general_capacity_dict_admin.items():
+    readiness_data['General Capacity']['Administration'][key] = {
+        'Full Question': cell_content(metadata_readiness, key, 'field_label'),
+        'Trunc Question': value,
+        'Stats': stats_dict(org_data_readiness, key)
+    }
+
+for key, value in general_capacity_dict_staff.items():
+    readiness_data['General Capacity']['Staff'][key] = {
+        'Full Question': cell_content(metadata_readiness, key, 'field_label'),
+        'Trunc Question': value,
+        'Stats': stats_dict(org_data_readiness, key)
+    }
+
+for key, value in cps_capacity_dict_admin.items():
+    readiness_data['CPS Capacity']['Administration'][key] = {
+        'Full Question': cell_content(metadata_readiness, key, 'field_label'),
+        'Trunc Question': value,
+        'Stats': stats_dict(org_data_readiness, key)
+    }
+
+for key, value in cps_capacity_dict_staff.items():
+    readiness_data['CPS Capacity']['Staff'][key] = {
+        'Full Question': cell_content(metadata_readiness, key, 'field_label'),
+        'Trunc Question': value,
+        'Stats': stats_dict(org_data_readiness, key)
+    }
 
 # Admin
 admin_readiness_results = {
@@ -1081,11 +1128,11 @@ readiness_results = {
 # All
 all_readiness_results = {
     'Motivation for Change': stats_dict(
-        organization_data_readiness, 'readiness_motiv_mean'),
+        org_data_readiness, 'readiness_motiv_mean'),
     'General Capacity': stats_dict(
-        organization_data_readiness, 'readiness_capacity_mean'),
+        org_data_readiness, 'readiness_capacity_mean'),
     'Capacity for CPS': stats_dict(
-        organization_data_readiness, 'readiness_cps_cap_mean')
+        org_data_readiness, 'readiness_cps_cap_mean')
 }
 
 
@@ -1102,20 +1149,6 @@ def set_col_widths(table, first_col, other_cols):
             row.cells[idx].width = width
 
 
-def readiness_tables(dictionary):
-    table = document.add_table(rows=1, cols=6, style='Normal Table')
-    hdr_cells = table.rows[0].cells
-    headers = ['Variable:', 'Obs', 'Mean', 'Std. Dev.', 'Min', 'Max']
-    for count, header in enumerate(headers):
-        hdr_cells[count].paragraphs[0].add_run(header).underline = True
-    for key, value in dictionary.items():
-        row_cells = table.add_row().cells
-        row_cells[0].paragraphs[0].add_run(key)
-        for x, y in enumerate(value.values()):
-            row_cells[x + 1].text = str(y)
-    set_col_widths(table, 2, 1)
-
-
 # Tables describing statistics for all staff
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
@@ -1123,8 +1156,7 @@ paragraph.add_run(
  to 5 (Strongly Agree), with a 3 response for "Not Sure."')
 readiness_tables(all_readiness_results)
 paragraph = document.add_paragraph('\n', style='Normal')
-paragraph.add_run('Summary:  Overall, staff at \
-' + organization_dictionary_aim[organization_number_aim] + ' are…\
+paragraph.add_run('Summary:  Overall, staff at ' + org + ' are…\
 \n\nThis spread can be seen in more detail in the histograms below.')
 
 document.add_page_break()
@@ -1137,27 +1169,19 @@ paragraph.add_run(
 for ALL STAFF'
 ).bold = True
 
-
-def all_staff_readiness_plots(title, column):
-    plt.figure(figsize=(3, 3))
-    organization_data_readiness[column].plot.hist(bins=np.linspace(1, 5, 9))
-    plt.title(title, fontsize=14)
-    plt.xticks((1, 2, 3, 4, 5))
-    plt.tight_layout()
-    plt.savefig('plt.png')
-    paragraph.add_run().add_picture('plt.png')
-
-
-all_staff_readiness_plots(
+histogram_general(
     'Motivation of All Staff',
+    org_data_readiness,
     'readiness_motiv_mean')
 
-all_staff_readiness_plots(
+histogram_general(
     'General Capacity of All Staff',
+    org_data_readiness,
     'readiness_capacity_mean')
 
-all_staff_readiness_plots(
+histogram_general(
     'CPS Capacity of All Staff',
+    org_data_readiness,
     'readiness_cps_cap_mean')
 
 
@@ -1166,9 +1190,7 @@ document.add_page_break()
 # *** Alisha might want to combine these two tables? ***
 # Tables describing statistics for Staff
 paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    'Readiness Survey Results Staff'
-).bold = True
+paragraph.add_run('Readiness Survey Results Staff').bold = True
 readiness_tables(readiness_results)
 
 # Tables describing statistics for Administration
@@ -1193,9 +1215,9 @@ role_count_threshold = int(
 )
 print('Thanks!\n\n\n')
 count_role_graphs = []
-for x, i in enumerate(organization_data_readiness['rolestaff']):
+for x, i in enumerate(org_data_readiness['rolestaff']):
     if role_count_readiness[i] < role_count_threshold:
-        organization_data_readiness.drop(x, inplace=True)
+        org_data_readiness.drop(x, inplace=True)
     else:
         count_role_graphs.append(i)
 
@@ -1203,11 +1225,11 @@ for x, i in enumerate(organization_data_readiness['rolestaff']):
 count_role_graphs = int(np.ceil(len(set(count_role_graphs)) / 2))
 count_role_graphs = int(count_role_graphs * 2)
 
-unique_rolestaff = organization_data_readiness['rolestaff'].nunique()
+unique_rolestaff = org_data_readiness['rolestaff'].nunique()
 unique_rolestaff = int(np.ceil(unique_rolestaff / 2))
-organization_data_readiness[
+org_data_readiness[
     'rolestaff'
-] = organization_data_readiness['rolestaff'].map(
+] = org_data_readiness['rolestaff'].map(
     role_dictionary_readiness)
 
 
@@ -1219,26 +1241,21 @@ participants who answered the survey in their role were excluded from the \
 following analyses.')
 
 
-def by_role_hist(title, column):
-    paragraph = document.add_paragraph('', style='Body Text')
-    paragraph.add_run(title).underline = True
-    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    plt.figure()
-    organization_data_readiness[column].hist(
-        figsize=(6.4, count_role_graphs),
-        by=organization_data_readiness['rolestaff'],
-        bins=np.linspace(1, 5, 9),
-        layout=(unique_rolestaff, 2))
-    plt.xticks((1, 2, 3, 4, 5))
-    plt.tight_layout()
-    plt.savefig('plt.png')
-    paragraph.add_run().add_picture('plt.png')
-    document.add_page_break()
-
-
-by_role_hist('Motivation by Role', 'readiness_motiv_mean')
-by_role_hist('General Capacity by Role', 'readiness_capacity_mean')
-by_role_hist('CPS Capacity by Role', 'readiness_cps_cap_mean')
+histogram_by(
+    'Motivation by Role',
+    org_data_readiness,
+    'readiness_motiv_mean',
+    'rolestaff')
+histogram_by(
+    'General Capacity by Role',
+    org_data_readiness,
+    'readiness_capacity_mean',
+    'rolestaff')
+histogram_by(
+    'CPS Capacity by Role',
+    org_data_readiness,
+    'readiness_cps_cap_mean',
+    'rolestaff')
 
 # ADD STAFF AND ADMIN TABLES
 paragraph = document.add_paragraph('\n', style='Normal')
@@ -1247,32 +1264,6 @@ p = paragraph.add_run('Educational Staffs’')
 p.bold = True
 p.underline = True
 paragraph.add_run(' Responses by Item:').bold = True
-
-
-def detailed_report(kind):
-    table = document.add_table(rows=1, cols=6, style='Normal Table')
-    hdr_cells = table.rows[0].cells
-    headers = ['Question:', 'Obs', 'Mean', 'Std. Dev.', 'Min', 'Max']
-    for count, header in enumerate(headers):
-        hdr_cells[count].paragraphs[0].add_run(header).underline = True
-    for key, value in readiness_data.items():
-        row_cells = table.add_row().cells
-        row_cells[0].paragraphs[0].add_run(key).bold = True
-        for key, value in value.items():
-            if kind.title() in key:
-                for key, value in value.items():
-                    if kind.lower() in key:
-                        question_number = key[5:]
-                        for key, value in value.items():
-                            if key == 'Trunc Question':
-                                row_cells = table.add_row().cells
-                                row_cells[0].paragraphs[0].add_run(
-                                    str(question_number) + ') ' + value)
-                            if key == 'Stats':
-                                for x, value in enumerate(value.values()):
-                                    row_cells[x + 1].text = str(value)
-    set_col_widths(table, 2.9, .9)
-
 
 detailed_report('staff')
 
@@ -1343,9 +1334,7 @@ document.add_page_break()
 
 # Heat Maps
 paragraph = document.add_paragraph('', style='Body Text')
-paragraph.add_run(
-    '\tHeat Maps\t'
-).bold = True
+paragraph.add_run('\tHeat Maps\t').bold = True
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
     'The following is a graphical representation of each readiness survey \
@@ -1377,7 +1366,7 @@ for key, value in readiness_data.items():
                             readiness_columns_staff_trunc.append(value)
 
 
-admin = organization_data_readiness[readiness_columns_admin].dropna(thresh=12)
+admin = org_data_readiness[readiness_columns_admin].dropna(thresh=12)
 admin_columns = []
 for i in readiness_columns_admin_trunc:
     new = i.split(' ')
@@ -1399,7 +1388,7 @@ admin = admin.reset_index().drop(['index'], axis=1)
 admin.columns = admin_columns
 
 
-staff = organization_data_readiness[readiness_columns_staff].dropna(thresh=10)
+staff = org_data_readiness[readiness_columns_staff].dropna(thresh=10)
 staff_columns = []
 for i in readiness_columns_staff_trunc:
     new = i.split(' ')
@@ -1422,28 +1411,6 @@ staff.columns = staff_columns
 
 # Can get around 35 participants on each heatmap. Make function that will loop
 # Through the dataframe and make a heatmap for each 40 participant groups
-
-
-def heat_map(df, group):
-    height = (len(df.index) * .18) + 2
-    sns.set()
-    f, ax = plt.subplots(figsize=(6.5, height))
-    sns.heatmap(
-        df,
-        annot=True,
-        ax=ax,
-        robust=True,
-        cbar=False,
-        vmin=1,
-        vmax=5,
-        cmap="YlGnBu")
-    plt.title('Readiness Survey Responses Heat Map for ' + group)
-    plt.xticks(rotation=90)
-    plt.ylabel('Participants')
-    plt.tight_layout()
-    plt.savefig('plt.png')
-    paragraph.add_run().add_picture('plt.png')
-
 
 x = []
 for i in staff.index:
@@ -1473,12 +1440,8 @@ document.add_page_break()
 # IV. CPS Readiness Summary
 
 paragraph = document.add_paragraph('', style='Body Text')
-paragraph.add_run(
-    '\tIV.\t'
-)
-paragraph.add_run(
-    'CPS Readiness Summary'
-).underline = True
+paragraph.add_run('\tIV.\t')
+paragraph.add_run('CPS Readiness Summary').underline = True
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
     'Insert summary rating form after quantitative interviews\n\n')
@@ -1487,47 +1450,33 @@ document.add_page_break()
 
 # V. Recommendations
 paragraph = document.add_paragraph('', style='Body Text')
-paragraph.add_run(
-    '\tV.\t'
-)
-paragraph.add_run(
-    'Recommendations'
-).underline = True
+paragraph.add_run('\tV.\t')
+paragraph.add_run('Recommendations').underline = True
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
     '\tBased upon the complete results of this readiness assessment, our \
-Readiness Team feels \
-that ' + organization_dictionary_aim[organization_number_aim] + ' is in \
-excellent shape to continue to the next phase of implementation. Our \
-recommendations are as follows:'
+Readiness Team feels that ' + org + ' is in excellent shape to continue to \
+the next phase of implementation. Our recommendations are as follows:'
 )
 paragraph.add_run('\n')
 
 paragraph = document.add_paragraph(
     '\nPrior to Training', style='Normal'
 ).bold = True
-document.add_paragraph(
-    '', style='List Bullet 2'
-)
+document.add_paragraph('', style='List Bullet 2')
 paragraph = document.add_paragraph(
     '\nTraining and Coaching', style='Normal'
 ).bold = True
-document.add_paragraph(
-    '', style='List Bullet 2'
-)
+document.add_paragraph('', style='List Bullet 2')
 paragraph = document.add_paragraph(
     '\nMoving Toward Sustainability', style='Normal'
 ).bold = True
-document.add_paragraph(
-    '', style='List Bullet 2'
-)
+document.add_paragraph('', style='List Bullet 2')
 document.add_page_break()
 
 # Appendix
 paragraph = document.add_paragraph('', style='Body Text')
-paragraph.add_run(
-    'Appendix'
-).underline = True
+paragraph.add_run('Appendix').underline = True
 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
@@ -1537,9 +1486,7 @@ paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
 
 paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    '\nFOR STAFF:'
-)
+paragraph.add_run('\nFOR STAFF:')
 
 question_columns_staff = []
 
@@ -1547,52 +1494,29 @@ questions_staff = []
 for i in metadata_readiness.index:
     if 'staff' in i:
         question_columns_staff.append(i)
-        question = meta_cell_content(
-            metadata_readiness, i, 'field_label'
-        )
+        question = cell_content(metadata_readiness, i, 'field_label')
         for i in question:
             questions_staff.append(i)
 questions_staff = questions_staff[1:]
 question_columns_staff = question_columns_staff[1:]
 
 
-def add_survey(job_type):
-    count = 0
-    for i in job_type:
-        count += 1
-        paragraph = document.add_paragraph(str(count) + ') ', style='Normal')
-        paragraph.add_run(i)
-        if count in [1, 2, 5, 6, 7, 8]:
-            paragraph.add_run(' (Motivation for Change)')
-        elif count in [3, 4]:
-            paragraph.add_run(' (CPS Capacity)')
-        else:
-            paragraph.add_run(' (General Capacity)')
-        if count in [5, 13]:
-            paragraph.add_run(' (Reversed)')
-
-
 add_survey(questions_staff)
 document.add_page_break()
 paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    '\nFOR LEADERS/ADMINISTRATION:'
-)
+paragraph.add_run('\nFOR LEADERS/ADMINISTRATION:')
 
 question_columns_admin = []
 questions_admin = []
 for i in metadata_readiness.index:
     if 'admin' in i:
         question_columns_admin.append(i)
-        question = meta_cell_content(
-            metadata_readiness, i, 'field_label'
-        )
+        question = cell_content(metadata_readiness, i, 'field_label')
         for i in question:
             questions_admin.append(i)
 add_survey(questions_admin)
 
 os.remove('plt.png')
 
-document.save(organization_dictionary_aim[organization_number_aim] + ' \
-Readiness Report.docx')
+document.save(org + ' Readiness Report.docx')
 print('The Readiness Report has been generated and saved!')

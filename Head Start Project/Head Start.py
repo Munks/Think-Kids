@@ -40,9 +40,11 @@ df_time_columns('T2_TKCO', cps_aim_t2)
 df_time_columns('T3_TKCO', cps_aim_t3)
 
 cps_aim_df_t1 = df[cps_aim_t1]
+print(cps_aim_df_t1)
 column_names = []
 split_dfs(cps_aim_df_t1, 3, 8)
 cps_aim_df_t1.columns = column_names
+print(column_names)
 
 cps_aim_df_t2 = df[cps_aim_t2]
 column_names = []
@@ -65,7 +67,6 @@ for i in all_cps_aim:
     df.drop(i, axis=1, inplace=True)
 
 # Adding the CPS-AIM to the main DataFrame
-
 results = []
 results = score.cps_aim_parent(cps_aim_df_t1, results, '#_', 't1')
 df = pd.merge(df, results, how='left', left_on='ID #', right_on='id')

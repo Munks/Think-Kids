@@ -9,6 +9,7 @@ import glob
 import os
 import datetime as dt
 
+
 # Set the path
 path = r'\\Cifs2\thinkkid$\Research\Chris\Youth Villages\Integrity Study Coding Sheets'
 tirf_data = path + '\TIRF Data'
@@ -39,19 +40,22 @@ for file in folder:
     specialist = filename[-16:-14]
     df_TIRF = pd.read_excel(file, header=None)
 
-    # Replace the blanks with neutral values (np.NaN)
-    df_TIRF.replace({
-        'Thoroughness Rating NA  -  1  -  4': np.NaN, '____': np.NaN,
-        'NA  -  1  -  2  -  3  -  4': np.NaN, '□ _____': np.NaN,
-        'NA ': np.NaN, 'NA  ': np.NaN, ' 1  -  2  -  3  -  4': np.NaN,
-        'Y / N': np.NaN
-    }, inplace=True)
-
     # Drop out universally blank rows
     df_TIRF.drop(df_TIRF.index[[2, 3, 16, 19]], inplace=True)
 
     # Drop out universally blank columns
     df_TIRF.drop([1], axis=1, inplace=True)
+
+    # Replace the blanks with neutral values (np.NaN)
+    df_TIRF.replace({
+        'Thoroughness Rating NA  -  1  -  4': np.NaN,
+        '____': np.NaN,
+        'NA  -  1  -  2  -  3  -  4': np.NaN,
+        '□ _____': np.NaN,
+        'NA ': np.NaN, 'NA  ': np.NaN,
+        ' 1  -  2  -  3  -  4': np.NaN,
+        'Y / N': np.NaN
+    }, inplace=True)
 
     # reorient the sheet horizontally
     df_TIRF = df_TIRF.transpose()
@@ -80,7 +84,7 @@ for file in folder:
     }
     time = str(session_lengths[count]) + ' min'
     # Grab each cell of the data sheet and string them after eachother
-    # This puts the data in a single column
+    # Put the data in a single column
     cell_value = []
     for i in df_TIRF:
         for x in df_TIRF[i]:
