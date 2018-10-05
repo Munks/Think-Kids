@@ -487,7 +487,7 @@ paragraph.add_run(
     'III.\tQualitative Assessment\n\n'
 )
 paragraph.add_run(
-    'VI.\tCPS Readiness Summary\n\n'
+    'IV.\tCPS Readiness Summary\n\n'
 )
 paragraph.add_run(
     'V.\tRecommendations\n\n'

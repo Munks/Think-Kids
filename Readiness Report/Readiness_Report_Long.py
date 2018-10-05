@@ -301,6 +301,12 @@ meta_df = project.export_metadata(format='df')
 
 organization_dictionary_aim = meta_dict(meta_df, cps_aim_org)
 
+# Determine if the report is going to be on a system, or a school
+choice_dict = {
+    1: 'school',
+    2: 'system',
+}
+
 # User Interface
 #   Ask the User what organization they are generating a report for.
 print("The organizations listed in the CPS-AIM, Longitudinal\
@@ -310,6 +316,16 @@ for key, value in organization_dictionary_aim.items():
 cps_aim_choice = int(input("Please enter the Organizations Number to \
 generate a report on.\n\t"))
 print('Thanks!\n\n\n')
+
+#   Ask the User if they are generating a report on systems, or schools
+print('Is this organization a school or a system?\n')
+for key, value in choice_dict.items():
+    print(str(key) + '\t' + value.title())
+choice = int(input('\n\t'))
+print('Thanks!\n\n\n')
+
+# Set the choice to be either a school or system.
+choice = choice_dict[choice]
 
 # Save the organization name
 org = organization_dictionary_aim[cps_aim_choice]
@@ -361,10 +377,15 @@ number to generate a report on.\n\t"))
 
 # Variables from AIM Data Set
 
-# Role variables
-role_dictionary_aim = meta_dict(meta_df, 'rolee')
-role_count_aim = cps_aim_df['rolee'].value_counts().to_dict()
-role_survey_count_aim = cps_aim_df['rolee'].count()
+# Role variables educators
+role_dictionary_aime = meta_dict(meta_df, 'rolee')
+role_count_aime = cps_aim_df['rolee'].value_counts().to_dict()
+role_survey_count_aime = cps_aim_df['rolee'].count()
+
+# Role variables clinical
+role_dictionary_aimc = meta_dict(meta_df, 'rolec')
+role_count_aimc = cps_aim_df['rolec'].value_counts().to_dict()
+role_survey_count_aimc = cps_aim_df['rolec'].count()
 # Get a count of how many participants responded to the survey and answered
 # at least 20 questions.
 survey_count_aim = cps_aim_df.record_id.count()
@@ -420,7 +441,7 @@ paragraph.add_run(
     '\n\n\nCPS Readiness Report'
 ).bold = True
 paragraph.add_run(
-    '\n\nOrganization: ' + org
+    '\n\n' + choice.title() + ': ' + org
 ).bold = True
 paragraph.add_run(
     '\n\nDate Prepared: ' + current_date
@@ -446,7 +467,7 @@ paragraph.add_run(
     'III.\tQualitative Assessment\n\n'
 )
 paragraph.add_run(
-    'VI.\tCPS Readiness Summary\n\n'
+    'IV.\tCPS Readiness Summary\n\n'
 )
 paragraph.add_run(
     'V.\tRecommendations\n\n'
@@ -472,18 +493,19 @@ implementing with fidelity and sustainability requires time, patience, \
 discomfort, perseverance, and good leadership.')
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
-    '\tThe staff at your agency completed surveys to provide us with \
-quantitative information. Additionally, focus groups with your agency’s \
+    "\tThe staff at your " + choice + " completed surveys to provide us with \
+quantitative information. Additionally, focus groups with your \
+" + choice + "'s \
 staff gave us additional qualitative information that we have used toward \
 this final report. These focus groups facilitated our understanding of \
-current practices and challenges that your staff face. Every agency has \
+current practices and challenges that your staff face. Every organization has \
 challenges; understanding exactly what yours are will help us know how and \
-when to implement CPS to maximize its success.'
+when to implement CPS to maximize its success."
 )
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
     '\tAfter you review this report, the Think:Kids team will discuss \
-recommendations with organization leadership.  In some cases, immediate \
+recommendations with ' + choice + ' leadership.  In some cases, immediate \
 CPS implementation is recommended, and if so, a proposed comprehensive \
 implementation and evaluation plan, timeline, and associated costs will be \
 discussed.  In other cases, the Think:Kids team may recommend to leadership \
@@ -516,10 +538,10 @@ row_cells[0].paragraphs[0].add_run('Mean:').underline = True
 row_cells[1].text = 'Average of all relevant items'
 row_cells = table.add_row().cells
 row_cells[0].paragraphs[0].add_run('Std Dev:').underline = True
-row_cells[1].text = 'Standard deviation: Approximately 68% of responses fall \
-within Mean +/- Standard deviation. For example, if the Mean is 3 and \
-Standard deviation is 1, 68% of responses fall between 3+/-1, or between 2 \
-and 4.'
+row_cells[1].text = 'Standard Deviation: Approximately 68% of responses fall \
+within the mean plus or minus the standard deviation. For example, if the \
+mean is 3 and standard deviation is 1, 68% of responses fall between 3+/-1, \
+or between 2 and 4.'
 row_cells = table.add_row().cells
 row_cells = table.add_row().cells
 row_cells[0].paragraphs[0].add_run('Min:').underline = True
@@ -555,8 +577,8 @@ paragraph.add_run(
 ).bold = True
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
-    '\tThe CPS-AIM inquires about factors related to CPS. A pre-training \
-measurement is taken so that we can see how staff’s adherence to the CPS \
+    '\tThe CPS-AIM inquires about factors related to CPS. This pre-training \
+measurement was taken so that we can monitor how staff’s adherence to the CPS \
 philosophy increases over time. We also hope that over time we will see \
 reduced burnout and perceptions of a more positive impact on youth.')
 paragraph = document.add_paragraph('', style='Normal')
@@ -583,13 +605,25 @@ def set_col_widths(table, first_col, other_cols):
             row.cells[idx].width = width
 
 
-# Staff Role Table
-make_table(
-    'Staff Role',
-    role_count_aim,
-    role_dictionary_aim,
-    role_survey_count_aim
-)
+# Staff Role Educators Table
+if role_survey_count_aime > 0:
+    make_table(
+        'Staff Roles Educators',
+        role_count_aime,
+        role_dictionary_aime,
+        role_survey_count_aime
+    )
+
+
+# Staff Role Clinical Table
+if role_survey_count_aimc > 0:
+    make_table(
+        'Staff Roles Clinical',
+        role_count_aimc,
+        role_dictionary_aimc,
+        role_survey_count_aimc
+    )
+
 
 # Staff Program Table
 if sub_org_dict:
@@ -629,7 +663,15 @@ document.add_page_break()
 # The CPS Adherence and Impact Measure (CPS-AIM)
 
 
-def cps_aim_plot():
+def cps_aim_plot(kind):
+    paragraph = document.add_paragraph('', style='Normal')
+    paragraph.add_run(
+        '\tScores range from 1=Strongly Disagree to 7=Strongly Agree. \
+In the graph below, the horizontal line indicates a score of 4, which is \
+“Not Sure.” The goal is to be far above the horizontal line in Adherence to \
+CPS Philosophy and Perceptions of Positive Impact, and far below the \
+horizontal line in Burnout.'
+    )
     plt.figure()
     results[results.columns[1:4]].mean().plot.bar(width=.9)
     plt.suptitle('CPS Adherence and Impact Measure', fontsize=14)
@@ -671,15 +713,7 @@ results = []
 results = score.cps_aim_educator(cps_aime_df, results, 'record_id')
 
 if not results.empty:
-    paragraph = document.add_paragraph('', style='Normal')
-    paragraph.add_run(
-        '\tScores range from 1=Strongly Disagree to 7=Strongly Agree. \
-In the graph below, the horizontal line indicates a score of 4, which is \
-“Not Sure.” The goal is to be far above the horizontal line in Adherence to \
-CPS Philosophy and Perceptions of Positive Impact, and far below the \
-horizontal line in Burnout.'
-    )
-    cps_aim_plot()
+    cps_aim_plot('Educational')
     document.add_picture('plt.png')
 
     # Adding the Summary: section, to be filled out later by Alisha
@@ -716,15 +750,7 @@ results = []
 results = score.cps_aim_systems(cps_aims_df, results, 'record_id')
 
 if not results.empty:
-    paragraph = document.add_paragraph('', style='Normal')
-    paragraph.add_run(
-        '\tScores range from 1=Strongly Disagree to 7=Strongly Agree. \
-In the graph below, the horizontal line indicates a score of 4, which is \
-“Not Sure.” The goal is to be far above the horizontal line in Adherence to \
-CPS Philosophy and Perceptions of Positive Impact, and far below the \
-horizontal line in Burnout.'
-    )
-    cps_aim_plot()
+    cps_aim_plot('Clinical')
     document.add_picture('plt.png')
 
     # Adding the Summary: section, to be filled out later by Alisha
@@ -736,21 +762,6 @@ horizontal line in Burnout.'
 # Part 2!
 # "CPS Readiness Assessment (1-Part)"
 
-# Determine if the report is going to be on a system, or a school
-choice_dict = {
-    1: 'school',
-    2: 'system',
-}
-
-
-# User Interface
-#   Ask the User if they are generating a report on systems, or schools
-print('Please choose which type of report you want to generate.\n')
-for key, value in choice_dict.items():
-    print(str(key) + '\t' + value.title())
-choice = int(input('\n\t'))
-print('Thanks!\n\n\n')
-
 # Pull REDcap Token depending on user choice
 if choice == 1:
     tk.cps_aim_educators()
@@ -759,9 +770,9 @@ elif choice == 2:
 
 # Part 2!
 # "CPS Readiness Assessment (1-Part)"
-if choice == 1:
+if choice == 'school':
     tk.readiness_for_schools()
-elif choice == 2:
+elif choice == 'system':
     tk.readiness_for_systems()
 
 project = Project(tk.api_url, tk.api_token)
@@ -773,7 +784,7 @@ organization_dictionary_readiness = meta_dict(
 
 # Download the corresponding Readiness Survey Data
 print("The organizations listed in the CPS Readiness Assessment for \
-" + choice_dict[choice].title() + "s (1-Part) are as follows.")
+" + choice.title() + "s (1-Part) are as follows.")
 for key, value in organization_dictionary_readiness.items():
     print(str(key) + '\t' + value)
 org_number_readiness = int(input("Please enter the Organizations \
@@ -860,8 +871,8 @@ paragraph.add_run(
     'specific capacity for implementation of the intervention in question'
 ).italic = True
 paragraph.add_run(
-    ' (in this case, CPS). These factors can vary by program within the \
-agency.'
+    ' (in this case, CPS). These factors can vary by program or by role \
+within the ' + choice + '.'
 )
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run('\tUnder the category of ')
@@ -889,7 +900,7 @@ externally through use of rewards and punishments.'
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
     '\tTo conduct a comprehensive readiness assessment across programs, we \
-utilize a readiness measure designed explicitly for this purpose and based on \
+utilize a readiness survey designed explicitly for this purpose and based on \
 the latest research on organizational readiness for implementation of an \
 innovation (Scaccia et al., 2015). ')
 document.add_page_break()
@@ -898,11 +909,10 @@ paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run('Survey Responders:').bold = True
 paragraph.add_run(
     '\n\t' + str(survey_count_readiness) + ' total staff members responded to \
-our CPS Readiness Surveys in a valid and reliable way. The quantitative \
+the CPS Readiness Surveys in a valid and reliable way. The quantitative \
 analyses on the next few pages of this report are based on data collected \
 from those respondents. The respondents are broken down by \
-' + choice_dict[choice] + ', job role, years of employment, and CPS \
-training status as follows:'
+' + choice + ', job role and years of employment as follows:'
 )
 
 # Staff Role Table Readiness
@@ -923,15 +933,6 @@ if sub_org_dict:
         sub_org_dict,
         sub_org_survey_count
     )
-
-# Staff Training Table Readiness
-document.add_paragraph('', style='Normal')
-make_table(
-    'Training in CPS',
-    training_count,
-    training_dictionary,
-    training_total_count
-)
 
 # Years at Organization Table Readiness
 document.add_paragraph('', style='Normal')
@@ -1157,7 +1158,7 @@ paragraph.add_run(
 readiness_tables(all_readiness_results)
 paragraph = document.add_paragraph('\n', style='Normal')
 paragraph.add_run('Summary:  Overall, staff at ' + org + ' are…\
-\n\nThis spread can be seen in more detail in the histograms below.')
+\n\nThis spread can be seen in more detail below.')
 
 document.add_page_break()
 
@@ -1341,7 +1342,9 @@ paragraph.add_run(
 item (columns) rated by each respondent (rows).  Items have been truncated to \
 save space; see the appendix for original item wording. Possible responses \
 range from 1 (Strongly Disagree) to 5 (Strongly Agree), with a 3 for \
-"Not Sure."'
+"Not Sure." Scores have been reversed when necessary so that higher scores \
+ and darker colors always indicate better readiness. Thus, columns with a lot \
+ of beige or light green indicate readiness areas in need of improvement.'
 )
 
 
@@ -1444,7 +1447,232 @@ paragraph.add_run('\tIV.\t')
 paragraph.add_run('CPS Readiness Summary').underline = True
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
-    'Insert summary rating form after quantitative interviews\n\n')
+    'Summary of Need:'
+).bold = True
+paragraph.add_run('\n')
+paragraph.add_run(
+    '\n' + org + ' is...'
+)
+paragraph.add_run(
+    '\nOn the whole, ' + org + ' staff...'
+)
+paragraph.add_run('\n')
+paragraph = document.add_paragraph('', style='Normal')
+paragraph.add_run(
+    '\nReadiness Strengths and Areas for Improvement'
+).bold = True
+paragraph.add_run(
+    '\nBased on the quantitative results of the readiness assessment, \
+' + org + ' appears to be <options: very well positioned, well \
+positioned, not yet ready> to implement CPS.')
+paragraph.add_run(
+    '\nReadiness strengths:'
+).italic = True
+document.add_paragraph(
+    '', style='List Bullet 2'
+)
+paragraph = document.add_paragraph('', style='Normal')
+paragraph.add_run(
+    '\nReadiness area for improvement:'
+).italc = True
+document.add_paragraph(
+    '', style='List Bullet 2'
+)
+document.add_page_break()
+
+# Creating the Readiness Measure Template
+
+table = document.add_table(rows=1, cols=3, style='Normal Table')
+hdr_cells = table.rows[0].cells
+hdr_cells[1].paragraphs[0].add_run(
+    'Score:    0=Not at all    1=Partially    2=Definitely'
+)
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run(
+    'Motivation for the Innovation*:').bold = True
+row_cells[1].paragraphs[0].add_run(
+    'Perceived incentives and disincentives that contribute to the \
+desirability to use CPS').bold = True
+row_cells[2].paragraphs[0].add_run('AVG:').bold = True
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Relative advantage')
+row_cells[1].paragraphs[0].add_run(
+    'Is CPS perceived as being better than what it is being compared against \
+or what already exists (including perceptions of anticipated outcomes)? Is \
+there a desire to change if the organization has a motivation-based system? \
+Is there staff buy-in at all levels?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Compatibility')
+row_cells[1].paragraphs[0].add_run(
+    'Is CPS perceived to be consistent with existing values, cultural norms, \
+experiences, and needs of potential users? If other treatment models are \
+being implemented within the organization, is implementation consistent with \
+the CPS philosophy? Is there an organization-wide stance on critical \
+incidents that is consistent with CPS (e.g., a priority to reduce coercive \
+and physical intervention)?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Complexity')
+row_cells[1].paragraphs[0].add_run(
+    'Is CPS perceived as being of reasonable complexity to understand and \
+use?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Trialability')
+row_cells[1].paragraphs[0].add_run(
+    'Can CPS be tested and experimented on within this organization? Does \
+the organization feel they can try it out or pilot it in a small group?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Observability')
+row_cells[1].paragraphs[0].add_run(
+    'Will outcomes that result from CPS be visible to others? Will there be \
+observable short term gains or "small wins?"')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Priority')
+row_cells[1].paragraphs[0].add_run(
+    'Is CPS mandated/required or will it likely solve a problem that the \
+organization must solve?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('General Capacity:').bold = True
+row_cells[1].paragraphs[0].add_run(
+    'Factors that contribute to the ability of the organization to implement \
+any innovation').bold = True
+row_cells[2].paragraphs[0].add_run('AVG:').bold = True
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Culture')
+row_cells[1].paragraphs[0].add_run(
+    'Is the overall culture one that feels open to innovation?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Climate')
+row_cells[1].paragraphs[0].add_run(
+    'How do employees collectively perceive, appraise, and feel about their \
+current working environment? Does the organization have a low burnout rate, \
+do they feel adequately staffed and supported by leadership?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Organizational innovativeness')
+row_cells[1].paragraphs[0].add_run(
+    'Are the staff generally receptive toward change?  Are staff feeling \
+overwhelmed by multiple initiatives and EBPs? Are staff engaged in regular \
+professional development opportunities?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Resource utilization')
+row_cells[1].paragraphs[0].add_run(
+    'Are there fiscal resources to put to training and coaching over the \
+longer term, to ensure sustainability? Does the budget contain allocated \
+funding for implementation of a new intervention or is there other evidence \
+of a plan for ongoing financial support?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Leadership')
+row_cells[1].paragraphs[0].add_run(
+    'Do organizational leaders articulate and support organizational \
+activities? Do leadership staff have the time and energy needed to devote \
+to a new intervention?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Structure')
+row_cells[1].paragraphs[0].add_run(
+    'Does the organization have good processes for good organizational \
+functioning on a day-to-day basis? Does the organization have clear and \
+organized documentation practices, good communication between staff and \
+shifts, and good supervisory structures?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Staff capacity')
+row_cells[1].paragraphs[0].add_run(
+    'Do the staff possess the appropriate skills, education, and expertise \
+to be able to engage with an innovation?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('CPS-Specific Capacity:').bold = True
+row_cells[1].paragraphs[0].add_run(
+    'The human, technical, and fiscal conditions that are important for \
+successfully implementing this particular innovation with quality').bold = True
+row_cells[2].paragraphs[0].add_run('AVG:').bold = True
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('CPS-speciﬁc knowledge, skills, and \
+abilities')
+row_cells[1].paragraphs[0].add_run(
+    'Do staff have the knowledge, skills, and abilities needed for CPS in \
+particular, or will they be likely to gain these?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Program champion')
+row_cells[1].paragraphs[0].add_run(
+    'Is there a CPS champion (Individual who will put charismatic support \
+behind CPS through connections, expertise, and social inﬂuence)?  Are there \
+individuals that can comprise a core team of internal CPS coaches or CPS \
+team leaders providing regular support within the organization? ')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Speciﬁc implementation supports')
+row_cells[1].paragraphs[0].add_run(
+    'Is there a presence of strong, convincing, informed, and demonstrable \
+support for CPS at the leadership level? Does the organization have the \
+policies, software, or hardware necessary to get CPS off the ground?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Available time')
+row_cells[1].paragraphs[0].add_run(
+    'Can direct care hours be adjusted to allow for ongoing coaching in CPS? \
+Are staff going to have adequate time to formally learn about CPS?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Finance')
+row_cells[1].paragraphs[0].add_run(
+    'If reimbursement for services is needed, are current reimbursement \
+mechanisms able to cover CPS?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Interorganizational relationships')
+row_cells[1].paragraphs[0].add_run(
+    'Are there relationships between (a) providers and support systems and \
+(b) different provider organizations that can be used to facilitate \
+implementation (e.g., referral sources, etc)?')
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('Informing stakeholders')
+row_cells[1].paragraphs[0].add_run(
+    "Will the organization be able to answer specific stakeholders' questions \
+about CPS (e.g., through development of materials)?")
+row_cells[2].paragraphs[0].add_run('-')
+row_cells = table.add_row().cells
+row_cells = table.add_row().cells
+row_cells[0].paragraphs[0].add_run('-')
+row_cells[1].paragraphs[0].add_run(
+    'Total Readiness (R=M*C*C; range 0 to 8)')
+row_cells[2].paragraphs[0].add_run('-')
+
+
+for row in table.rows:
+    for cell in row.cells:
+        paragraphs = cell.paragraphs
+        for paragraph in paragraphs:
+            for run in paragraph.runs:
+                font = run.font
+                font.size= Pt(10)
+
+
+def set_col_widths(table, first_col, middle_col, last_col):
+    widths = (
+        Inches(first_col),
+        Inches(middle_col),
+        Inches(last_col))
+    for row in table.rows:
+        for idx, width in enumerate(widths):
+            row.cells[idx].width = width
+
+
+set_col_widths(table, 1.25, 8, .5)
 
 document.add_page_break()
 
