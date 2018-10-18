@@ -220,24 +220,24 @@ def detailed_report(kind):
     set_col_widths(table, 2.9, .9)
 
 
-def heat_map(df, group):
+def heat_map(df, chart_title, min, max, height):
     """
     Create the Heat Map of our data. This shows how each participant answered
         on the readiness measure
     """
-    height = (len(df.index) * .18) + 2
     sns.set()
     f, ax = plt.subplots(figsize=(6.5, height))
     sns.heatmap(
         df,
-        annot=True,
+        annot=False,
         ax=ax,
         robust=True,
         cbar=False,
-        vmin=1,
-        vmax=5,
-        cmap="YlGnBu")
-    plt.title('Readiness Survey Responses Heat Map for ' + group)
+        vmin=min,
+        vmax=max,
+        cmap="YlGnBu",
+        yticklabels=False)
+    plt.title(chart_title)
     plt.xticks(rotation=90)
     plt.ylabel('Participants')
     plt.tight_layout()
@@ -712,6 +712,47 @@ cps_aime_df = cps_aime_df.dropna(thresh=5)
 results = []
 results = score.cps_aim_educator(cps_aime_df, results, 'record_id')
 
+cps_aime_df = cps_aime_df.drop(['record_id'], axis=1)
+cps_aime_df = cps_aime_df.reset_index()
+cps_aime_df = cps_aime_df.drop(['index'], axis=1)
+
+adherence_columns = []
+perception_columns = []
+burnout_columns = []
+reverse_columns = []
+
+new_cps_aime_columns = []
+for i in cps_aime_df.columns:
+    for key, value in score.cps_aim_edu_items_dict.items():
+        if key == i:
+            new_cps_aime_columns.append(value['Trunc Question'])
+            if value['Subscale'] == 'Adherence to CPS Philosophy':
+                adherence_columns.append(value['Trunc Question'])
+            if value['Subscale'] == 'Perception of Positive Impact':
+                perception_columns.append(value['Trunc Question'])
+            if value['Subscale'] == 'Burnout':
+                burnout_columns.append(value['Trunc Question'])
+            if value['Reverse'] == 'True':
+                reverse_columns.append(value['Trunc Question'])
+
+cps_aime_df.columns = new_cps_aime_columns
+
+new_cps_aime_columns = []
+
+for i in adherence_columns:
+    new_cps_aime_columns.append(i)
+for i in perception_columns:
+    new_cps_aime_columns.append(i)
+for i in burnout_columns:
+    new_cps_aime_columns.append(i)
+
+cps_aime_df = cps_aime_df[new_cps_aime_columns]
+
+for i in reverse_columns:
+    cps_aime_df[i].replace(
+        [1, 2, 3, 4, 5, 6, 7], [7, 6, 5, 4, 3, 2, 1],
+        inplace=True)
+
 if not results.empty:
     cps_aim_plot('Educational')
     document.add_picture('plt.png')
@@ -720,6 +761,9 @@ if not results.empty:
     paragraph = document.add_paragraph('', style='Normal')
     paragraph.add_run('Summary:').bold = True
     paragraph.add_run(' As a whole...')
+    document.add_page_break()
+    paragraph = document.add_paragraph('', style='Normal')
+    heat_map(cps_aime_df, 'CPS-AIM Educators', 1, 7, 8.5)
     document.add_page_break()
 
 
@@ -756,8 +800,18 @@ if not results.empty:
     # Adding the Summary: section, to be filled out later by Alisha
     paragraph = document.add_paragraph('', style='Normal')
     paragraph.add_run('Summary:').bold = True
-    paragraph.add_run(' As a whole...')
+    paragraph.add_run(' As a whole...\n')
     document.add_page_break()
+    x = []
+    for i in cps_aime_df.index:
+        x.append(i)
+        if i == 0:
+            continue
+        if i % 35 == 0:
+            heat_map(cps_aime_df.loc[x], 'CPS-AIM Clinical', 1, 7, 8)
+            x = []
+    if len(x) < 36 and len(x) != 0:
+        heat_map(cps_aime_df.loc[x], 'CPS-AIM Clinical', 1, 7, 8)
 
 # Part 2!
 # "CPS Readiness Assessment (1-Part)"
@@ -832,10 +886,12 @@ org_data_readiness = org_data_readiness.replace(9, np.nan)
 reverse = [
     'staff5', 'staff13', 'admin5', 'admin13'
 ]
+
 for i in reverse:
     org_data_readiness[i].replace(
         [1, 2, 3, 4, 5], [5, 4, 3, 2, 1],
         inplace=True)
+
 # Variables from Readiness Data Set
 
 # Get a count of how many participants responded to the survey and answered
@@ -1343,8 +1399,8 @@ item (columns) rated by each respondent (rows).  Items have been truncated to \
 save space; see the appendix for original item wording. Possible responses \
 range from 1 (Strongly Disagree) to 5 (Strongly Agree), with a 3 for \
 "Not Sure." Scores have been reversed when necessary so that higher scores \
- and darker colors always indicate better readiness. Thus, columns with a lot \
- of beige or light green indicate readiness areas in need of improvement.'
+and darker colors always indicate better readiness. Thus, columns with a lot \
+of beige or light green indicate readiness areas in need of improvement.'
 )
 
 
@@ -1421,10 +1477,10 @@ for i in staff.index:
     if i == 0:
         continue
     if i % 35 == 0:
-        heat_map(staff.loc[x], 'Staff')
+        heat_map(staff.loc[x], 'Readiness Survey Responses Heat Map for Staff', 1, 5, (len(staff.loc[x].index) * .18) + 2)
         x = []
 if len(x) < 36 and len(x) != 0:
-    heat_map(staff.loc[x], 'Staff')
+    heat_map(staff.loc[x], 'Readiness Survey Responses Heat Map for Staff', 1, 5, (len(staff.loc[x].index) * .18) + 2)
 
 x = []
 for i in admin.index:
@@ -1432,10 +1488,10 @@ for i in admin.index:
     if i == 0:
         continue
     if i % 35 == 0:
-        heat_map(admin.loc[x], 'Admin')
+        heat_map(admin.loc[x], 'Readiness Survey Responses Heat Map for Admin', 1, 5, (len(admin.loc[x].index) * .18) + 2)
         x = []
 if len(x) < 36 and len(x) != 0:
-    heat_map(admin.loc[x], 'Admin')
+    heat_map(admin.loc[x], 'Readiness Survey Responses Heat Map for Admin', 1, 5, (len(admin.loc[x].index) * .18) + 2)
 
 document.add_page_break()
 
