@@ -220,13 +220,13 @@ def detailed_report(kind):
     set_col_widths(table, 2.9, .9)
 
 
-def heat_map(df, chart_title, min, max, height):
+def heat_map(df, chart_title, min, max, height, width):
     """
     Create the Heat Map of our data. This shows how each participant answered
         on the readiness measure
     """
     sns.set()
-    f, ax = plt.subplots(figsize=(6.5, height))
+    f, ax = plt.subplots(figsize=(width, height))
     sns.heatmap(
         df,
         annot=False,
@@ -242,7 +242,6 @@ def heat_map(df, chart_title, min, max, height):
     plt.ylabel('Participants')
     plt.tight_layout()
     plt.savefig('plt.png')
-    paragraph.add_run().add_picture('plt.png')
 
 
 def add_survey(job_type):
@@ -360,13 +359,14 @@ for i in sub_org_column:
 
 # User Interface
 #   Ask the user if they want to break the data down by Sub-Catagory.
-sub_check = int(input(
-    "Do you want to break down the data by sub-catagory?\n1\tYes\n2\tNo\n\t"))
+breakdown = int(input(
+    "Do you want an breakdown the data in any way?\
+\n0\tOrganization as a whole\n1\tBy Program\n2\tBy Staff Role\n\t"))
 print('\nThanks!\n\n\n')
 # 1 = Yes, 2 = No
 # If Yes, ask the user which sub-catagory they would like to generate a report
 #   for. If No, the code will skip this.
-if sub_check == 1:
+if breakdown == 1:
     for key, value in sub_org_dict.items():
         print(str(key) + '\t' + value)
     cps_aim_choice = int(input("Please enter the sub-catagory \
@@ -397,14 +397,14 @@ training = cps_aim_df.training
 training_dictionary = {
     'No Training': 0,
     'Not Sure': 0,
-    'Recieved Training': 0,
+    'Received Training': 0,
 }
 
 # Build a count of the total number of people who answered anything about
 # training
 training_total = 0
 for i in training:
-    # An answer of 0 means they recieved no training
+    # An answer of 0 means they received no training
     if i == 2:
         training_dictionary['No Training'] += 1
         training_total += 1
@@ -413,13 +413,15 @@ for i in training:
         training_dictionary['Not Sure'] += 1
         training_total += 1
     if i == 1:
-        training_dictionary['Recieved Training'] += 1
+        training_dictionary['Received Training'] += 1
         training_total += 1
 
 
 # Creating the Report in a Word Docutment
+# Any code with "paragraph", "document", or "table" is responsible for setting
+# up the final word document.
 document = Document('Readiness Report Template.docx')
-
+# Setting up the document fonts and styles
 styles = document.styles
 paragraph_styles = [s for s in styles if s.type == WD_STYLE_TYPE.PARAGRAPH]
 character_styles = [s for s in styles if s.type == WD_STYLE_TYPE.CHARACTER]
@@ -661,8 +663,6 @@ document.add_page_break()
 
 
 # The CPS Adherence and Impact Measure (CPS-AIM)
-
-
 def cps_aim_plot(kind):
     paragraph = document.add_paragraph('', style='Normal')
     paragraph.add_run(
@@ -674,7 +674,7 @@ horizontal line in Burnout.'
     )
     plt.figure()
     results[results.columns[1:4]].mean().plot.bar(width=.9)
-    plt.suptitle('CPS Adherence and Impact Measure', fontsize=14)
+    plt.suptitle('CPS Adherence and Impact Measure for ' + kind, fontsize=14)
     plt.title('Pre-Training Score', fontsize=10)
     plt.xticks((0, 1, 2),
                ('Adherence', 'Positive Impact', 'Burnout'),
@@ -686,42 +686,97 @@ horizontal line in Burnout.'
 
 
 # Creating the CPS AIM Graph for Pre-Training
-# Score the CPS AIM
+# Score the CPS AIM Educators
 cps_aime_cols = []
 
+# Getting only columns with CPS-AIM Educators Data
 for i in cps_aim_df.columns:
     if 'cpsaime' in i:
         cps_aime_cols.append(i)
 
 cps_aime_cols.append('record_id')
 
+# Cleaning the CPS-AIM Educators columns to match the scoring program columns
 new_cps_aime_columns = []
 
 for i in range(32):
     new_cps_aime_columns.append('tkcot_' + str(i + 1))
 
+# Question has been dropped from CPS-AIM
 new_cps_aime_columns.remove('tkcot_11')
 new_cps_aime_columns.append('record_id')
 
+# Create a new DataFrame with the CPS-AIM Educators Data
 cps_aime_df = cps_aim_df[cps_aime_cols]
 
+# Change the column names of the new DataFrame to match scoring program names
 cps_aime_df.columns = new_cps_aime_columns
 
+# Drop out data for participants who missed 5 or more questions
 cps_aime_df = cps_aime_df.dropna(thresh=5)
 
+# Empty Results
 results = []
+# Scoring the CPS-AIM Educators
 results = score.cps_aim_educator(cps_aime_df, results, 'record_id')
 
+# Dropping out the Record ID column
 cps_aime_df = cps_aime_df.drop(['record_id'], axis=1)
+
 cps_aime_df = cps_aime_df.reset_index()
+# Dropping the Index column
 cps_aime_df = cps_aime_df.drop(['index'], axis=1)
 
+# Creating lists of column names for each sub-scale
 adherence_columns = []
 perception_columns = []
 burnout_columns = []
 reverse_columns = []
 
+subscales = {
+    'Adherence to CPS Philosophy': {
+        'Columns': adherence_columns,
+        'Description': '\nThe Adherence Subscale of the CPS-AIM gives us an \
+indication of to what degree staff members believe in the CPS philosophy of \
+“kids do well if they can” and adhere to the belief that it is “skill, not \
+will” that leads to challenging behaviors. On this heatmap, each row is a \
+single staff member. Each column is an item that asks about the staff \
+member’s philosophy. Lighter colors indicate belief in conventional wisdom \
+and disagreement with the CPS philosophy. Darker colors indicate belief in \
+the CPS philosophy and disagreement with conventional wisdom. So we want this \
+graph to get darker over time, as more staff adhere to the CPS philosophy.'
+    },
+    'Perceptions of Positive Impact': {
+        'Columns': perception_columns,
+        'Description': '\nThe Perception of Positive Impact Subscale gives \
+us an indication of how confident staff are that they are having a positive \
+impact on the youth with whom they work. (Note that this is the staff \
+member’s self-perception, and is not necessarily reflective of the positive \
+impact they are truly having.) On this heatmap, each row is a single staff \
+member. Each column is an item that asks about the staff member’s perception \
+of positive impact. Lighter colors indicate low perceptions of positive \
+impact, which could indicate that a staff member feels unable to help youth, \
+or could indicate that the staff member understands that s/he has more to \
+learn in order to have a positive impact. Darker colors indicate greater \
+perceptions of positive impact; i.e., greater confidence helping challenging \
+students to succeed. So we want this graph to get darker over time, or to \
+stay dark if perceived competence was positive to start.'
+    },
+    'Burnout': {
+        'Columns': burnout_columns,
+        'Description': '\nThe Burnout Subscale of the CPS-AIM gives us an \
+indication of the level of stress, or burnout, that staff are feeling. On \
+this heatmap, each row is a single staff member. Each column is an item that \
+asks about the staff member’s feelings of stress. Lighter colors indicate \
+less stress and burnout. Darker colors indicate more stress and burnout. So \
+we want this graph to get lighter over time, or to stay light, if stress and \
+burnout were low to start.'
+    }
+}
+
+# And a final column list for the CPS-AIM Educators
 new_cps_aime_columns = []
+
 for i in cps_aime_df.columns:
     for key, value in score.cps_aim_edu_items_dict.items():
         if key == i:
@@ -735,19 +790,10 @@ for i in cps_aime_df.columns:
             if value['Reverse'] == 'True':
                 reverse_columns.append(value['Trunc Question'])
 
+# Final CPS-AIM Educators Results DataFrame
 cps_aime_df.columns = new_cps_aime_columns
 
-new_cps_aime_columns = []
-
-for i in adherence_columns:
-    new_cps_aime_columns.append(i)
-for i in perception_columns:
-    new_cps_aime_columns.append(i)
-for i in burnout_columns:
-    new_cps_aime_columns.append(i)
-
-cps_aime_df = cps_aime_df[new_cps_aime_columns]
-
+# Re-order the columns by subscale
 for i in reverse_columns:
     cps_aime_df[i].replace(
         [1, 2, 3, 4, 5, 6, 7], [7, 6, 5, 4, 3, 2, 1],
@@ -761,67 +807,160 @@ if not results.empty:
     paragraph = document.add_paragraph('', style='Normal')
     paragraph.add_run('Summary:').bold = True
     paragraph.add_run(' As a whole...')
-    document.add_page_break()
     paragraph = document.add_paragraph('', style='Normal')
-    heat_map(cps_aime_df, 'CPS-AIM Educators', 1, 7, 8.5)
-    document.add_page_break()
+    for i in subscales.values():
+        heat_map(
+            df=cps_aime_df[i['Columns']],
+            chart_title='CPS-AIM Educators',
+            min=1,
+            max=7,
+            height=8.5,
+            width=4
+        )
+        table = document.add_table(rows=1, cols=2, style='Normal Table')
+        cell = table.rows[0].cells[0].paragraphs[0].add_run().add_picture('plt.png')
+        cell = table.rows[0].cells[1].paragraphs[0].add_run(i['Description'])
 
 
+# Score the CPS AIM Systems
 cps_aims_cols = []
 
+# Getting only columns with CPS-AIM Systems Data
 for i in cps_aim_df.columns:
     if 'cpsaims' in i:
         cps_aims_cols.append(i)
 
 cps_aims_cols.append('record_id')
 
+# Cleaning the CPS-AIM Systems columns to match the scoring program columns
 new_cps_aims_columns = []
 
 for i in range(36):
     new_cps_aims_columns.append('tkcot_' + str(i + 1))
 
+# Questions have been dropped from CPS-AIM
 new_cps_aims_columns.remove('tkcot_30')
 new_cps_aims_columns.remove('tkcot_29')
 new_cps_aims_columns.append('record_id')
 
+# Create a new DataFrame with the CPS-AIM Systems Data
 cps_aims_df = cps_aim_df[cps_aims_cols]
 
+# Change the column names of the new DataFrame to match scoring program names
 cps_aims_df.columns = new_cps_aims_columns
 
+# Drop out data for participants who missed 5 or more questions
 cps_aims_df = cps_aims_df.dropna(thresh=5)
 
+# Empty Results
 results = []
+# Scoring the CPS-AIM Educators
 results = score.cps_aim_systems(cps_aims_df, results, 'record_id')
 
+# Dropping out the Record ID column
+cps_aims_df = cps_aims_df.drop(['record_id'], axis=1)
+
+cps_aims_df = cps_aims_df.reset_index()
+# Dropping the Index column
+cps_aims_df = cps_aims_df.drop(['index'], axis=1)
+
+# Creating lists of column names for each sub-scale
+adherence_columns = []
+perception_columns = []
+burnout_columns = []
+reverse_columns = []
+
+subscales = {
+    'Adherence to CPS Philosophy': {
+        'Columns': adherence_columns,
+        'Description': '\nThe Adherence Subscale of the CPS-AIM gives us an \
+indication of to what degree staff members believe in the CPS philosophy of \
+“kids do well if they can” and adhere to the belief that it is “skill, not \
+will” that leads to challenging behaviors. On this heatmap, each row is a \
+single staff member. Each column is an item that asks about the staff \
+member’s philosophy. Lighter colors indicate belief in conventional wisdom \
+and disagreement with the CPS philosophy. Darker colors indicate belief in \
+the CPS philosophy and disagreement with conventional wisdom. So we want this \
+graph to get darker over time, as more staff adhere to the CPS philosophy.'
+    },
+    'Perceptions of Positive Impact': {
+        'Columns': perception_columns,
+        'Description': '\nThe Perception of Positive Impact Subscale gives \
+us an indication of how confident staff are that they are having a positive \
+impact on the youth with whom they work. (Note that this is the staff \
+member’s self-perception, and is not necessarily reflective of the positive \
+impact they are truly having.) On this heatmap, each row is a single staff \
+member. Each column is an item that asks about the staff member’s perception \
+of positive impact. Lighter colors indicate low perceptions of positive \
+impact, which could indicate that a staff member feels unable to help youth, \
+or could indicate that the staff member understands that s/he has more to \
+learn in order to have a positive impact. Darker colors indicate greater \
+perceptions of positive impact; i.e., greater confidence helping challenging \
+students to succeed. So we want this graph to get darker over time, or to \
+stay dark if perceived competence was positive to start.'
+    },
+    'Burnout': {
+        'Columns': burnout_columns,
+        'Description': '\nThe Burnout Subscale of the CPS-AIM gives us an \
+indication of the level of stress, or burnout, that staff are feeling. On \
+this heatmap, each row is a single staff member. Each column is an item that \
+asks about the staff member’s feelings of stress. Lighter colors indicate \
+less stress and burnout. Darker colors indicate more stress and burnout. So \
+we want this graph to get lighter over time, or to stay light, if stress and \
+burnout were low to start.'
+    }
+}
+
+# And a final column list for the CPS-AIM Systems
+new_cps_aims_columns = []
+
+for i in cps_aims_df.columns:
+    for key, value in score.cps_aim_sys_items_dict.items():
+        if key == i:
+            new_cps_aims_columns.append(value['Trunc Question'])
+            if value['Subscale'] == 'Adherence to CPS Philosophy':
+                adherence_columns.append(value['Trunc Question'])
+            if value['Subscale'] == 'Perception of Positive Impact':
+                perception_columns.append(value['Trunc Question'])
+            if value['Subscale'] == 'Burnout':
+                burnout_columns.append(value['Trunc Question'])
+            if value['Reverse'] == 'True':
+                reverse_columns.append(value['Trunc Question'])
+
+
+# Final CPS-AIM Educators Results DataFrame
+cps_aims_df.columns = new_cps_aims_columns
+
+# Re-order the columns by subscale
+for i in reverse_columns:
+    cps_aims_df[i].replace(
+        [1, 2, 3, 4, 5, 6, 7], [7, 6, 5, 4, 3, 2, 1],
+        inplace=True)
+
 if not results.empty:
-    cps_aim_plot('Clinical')
+    cps_aim_plot('Systems')
     document.add_picture('plt.png')
 
     # Adding the Summary: section, to be filled out later by Alisha
     paragraph = document.add_paragraph('', style='Normal')
     paragraph.add_run('Summary:').bold = True
-    paragraph.add_run(' As a whole...\n')
-    document.add_page_break()
-    x = []
-    for i in cps_aime_df.index:
-        x.append(i)
-        if i == 0:
-            continue
-        if i % 35 == 0:
-            heat_map(cps_aime_df.loc[x], 'CPS-AIM Clinical', 1, 7, 8)
-            x = []
-    if len(x) < 36 and len(x) != 0:
-        heat_map(cps_aime_df.loc[x], 'CPS-AIM Clinical', 1, 7, 8)
+    paragraph.add_run(' As a whole...')
+    paragraph = document.add_paragraph('', style='Normal')
+    for i in subscales.values():
+        heat_map(
+            df=cps_aims_df[i['Columns']],
+            chart_title='CPS-AIM Clinical',
+            min=1,
+            max=7,
+            height=8.5,
+            width=4
+        )
+        table = document.add_table(rows=1, cols=2, style='Normal Table')
+        cell = table.rows[0].cells[0].paragraphs[0].add_run().add_picture('plt.png')
+        cell = table.rows[0].cells[1].paragraphs[0].add_run(i['Description'])
 
-# Part 2!
-# "CPS Readiness Assessment (1-Part)"
 
 # Pull REDcap Token depending on user choice
-if choice == 1:
-    tk.cps_aim_educators()
-elif choice == 2:
-    tk.cps_aim_systems()
-
 # Part 2!
 # "CPS Readiness Assessment (1-Part)"
 if choice == 'school':
@@ -866,10 +1005,10 @@ for i in sub_org_column:
     sub_org_count = org_data_readiness[i].value_counts().to_dict()
     sub_org_survey_count = org_data_readiness[i].count()
 
-if sub_check == 1:
+if breakdown == 1:
     for key, value in sub_org_dict.items():
         print(str(key) + '\t' + value)
-    org_number_readiness = int(input("Please enter the sub-catagory \
+    org_number_readiness = int(input("Please enter the program \
     number to generate a report on.\n\t"))
     print('Thanks!\n\n\n')
 
@@ -1395,13 +1534,13 @@ paragraph.add_run('\tHeat Maps\t').bold = True
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
     'The following is a graphical representation of each readiness survey \
-item (columns) rated by each respondent (rows).  Items have been truncated to \
-save space; see the appendix for original item wording. Possible responses \
-range from 1 (Strongly Disagree) to 5 (Strongly Agree), with a 3 for \
-"Not Sure." Scores have been reversed when necessary so that higher scores \
-and darker colors always indicate better readiness. Thus, columns with a lot \
-of beige or light green indicate readiness areas in need of improvement.'
+item (columns) rated by each respondent (rows). Items have been truncated to \
+save space; see the appendix for original item wording. Scores have been \
+reversed when necessary so that darker colors always indicate better \
+readiness. Thus, columns with a lot of beige or light green indicate \
+readiness areas in need of improvement'
 )
+paragraph = document.add_paragraph('', style='Body Text')
 
 
 readiness_columns_admin = []
@@ -1471,30 +1610,30 @@ staff.columns = staff_columns
 # Can get around 35 participants on each heatmap. Make function that will loop
 # Through the dataframe and make a heatmap for each 40 participant groups
 
-x = []
-for i in staff.index:
-    x.append(i)
-    if i == 0:
-        continue
-    if i % 35 == 0:
-        heat_map(staff.loc[x], 'Readiness Survey Responses Heat Map for Staff', 1, 5, (len(staff.loc[x].index) * .18) + 2)
-        x = []
-if len(x) < 36 and len(x) != 0:
-    heat_map(staff.loc[x], 'Readiness Survey Responses Heat Map for Staff', 1, 5, (len(staff.loc[x].index) * .18) + 2)
+if not staff.empty:
+    heat_map(
+        df=staff,
+        chart_title='Readiness Survey Responses Heat Map for Staff',
+        min=1,
+        max=5,
+        height=7,
+        width=6.5
+    )
+    paragraph.add_run().add_picture('plt.png')
+    document.add_page_break()
 
-x = []
-for i in admin.index:
-    x.append(i)
-    if i == 0:
-        continue
-    if i % 35 == 0:
-        heat_map(admin.loc[x], 'Readiness Survey Responses Heat Map for Admin', 1, 5, (len(admin.loc[x].index) * .18) + 2)
-        x = []
-if len(x) < 36 and len(x) != 0:
-    heat_map(admin.loc[x], 'Readiness Survey Responses Heat Map for Admin', 1, 5, (len(admin.loc[x].index) * .18) + 2)
-
-document.add_page_break()
-
+if not admin.empty:
+    heat_map(
+        df=admin,
+        chart_title='Readiness Survey Responses Heat Map for Admin',
+        min=1,
+        max=5,
+        height=6.5,
+        width=6.5
+    )
+    paragraph = document.add_paragraph('', style='Body Text')
+    paragraph.add_run().add_picture('plt.png')
+    document.add_page_break()
 
 # IV. CPS Readiness Summary
 
