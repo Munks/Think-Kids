@@ -30,6 +30,48 @@ retrieved any of the following three locations:
 
 
 # Functions
+def add_document_text_from_excel(df):
+    """
+    This takes text out of a formatted excel and adds it to the document.
+    """
+    for i in df.index:
+        if df.iloc[i]['Paragraph']:
+            if df.iloc[i]['Paragraph'] == 'Skip':
+                continue
+            else:
+                paragraph_style = str(df.iloc[i]['Paragraph'])
+        if df.iloc[i]['Text']:
+            text = str(df.iloc[i]['Text'])
+        if df.iloc[i]['Style']:
+            text_style = str(df.iloc[i]['Style'])
+        if 'nan' not in paragraph_style:
+            paragraph = document.add_paragraph('', style=paragraph_style)
+        if text_style == 'bold':
+            paragraph.add_run(text).bold = True
+        elif text_style == 'italic':
+            paragraph.add_run(text).italic = True
+        elif text_style == 'underline':
+            paragraph.add_run(text).underline = True
+        else:
+            paragraph.add_run(text)
+
+
+def add_survey(job_type):
+    """
+    This adds the appendix surveys to the end of the Word Document
+    """
+    count = 0
+    for i in job_type:
+        count += 1
+        paragraph = document.add_paragraph(str(count) + ') ', style='Normal')
+        paragraph.add_run(i)
+        if count in [1, 2, 5, 6, 7, 8]:
+            paragraph.add_run(' (Fit)')
+        else:
+            paragraph.add_run(' (Capacity)')
+        if count in [5, 13]:
+            paragraph.add_run(' (Reversed)')
+
 
 def cell_content(df, row, column):
     """
@@ -99,10 +141,10 @@ def make_table(title, primary, secondary, count):
     #   the name as it will appear in the table.
     count = Count of total of how many times all variables appear.
     """
-    table = document.add_table(rows=1, cols=4, style='Normal Table')
+    table = document.add_table(rows=1, cols=3, style='Normal Table')
     hdr_cells = table.rows[0].cells
     hdr_cells[0].paragraphs[0].add_run(title).bold = True
-    headers = ['Freq', 'Percent', 'Cum.']
+    headers = ['Freq', 'Percent']
     for position, header in enumerate(headers):
         hdr_cells[position + 1].paragraphs[0].add_run(header).underline = True
     total = 0
@@ -112,8 +154,7 @@ def make_table(title, primary, secondary, count):
         row_cells[1].text = str(value)
         total += int(value)
         row_cells[2].text = str(round(float(value / count) * 100, 0)) + '%'
-        row_cells[3].text = str(round(float(total / count) * 100, 0)) + '%'
-    set_col_widths(table, 3, 1)
+    set_col_widths(table, 4, 1)
 
 
 def stats_dict(df, column):
@@ -167,7 +208,7 @@ def histogram_general(title, df, column):
     paragraph.add_run().add_picture('plt.png')
 
 
-def histogram_by(title, df, column, sort_by):
+def histogram_by(title, df, df_column, sort_by, height, columns):
     """
     Creates multiple histograms of the column data broken down by role
 
@@ -180,11 +221,11 @@ def histogram_by(title, df, column, sort_by):
     paragraph.add_run(title).underline = True
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     plt.figure()
-    df[column].hist(
-        figsize=(6.4, count_role_graphs),
+    df[df_column].hist(
+        figsize=(6.4, height),
         by=df[sort_by],
         bins=np.linspace(1, 5, 9),
-        layout=(unique_rolestaff, 2),
+        layout=(columns, 2),
         sharey=True,
         sharex=True,
         xrot=90)
@@ -244,24 +285,15 @@ def heat_map(df, chart_title, min, max, height, width):
     plt.savefig('plt.png')
 
 
-def add_survey(job_type):
-    """
-    This adds the appendix surveys to the end of the Word Document
-    """
-    count = 0
-    for i in job_type:
-        count += 1
-        paragraph = document.add_paragraph(str(count) + ') ', style='Normal')
-        paragraph.add_run(i)
-        if count in [1, 2, 5, 6, 7, 8]:
-            paragraph.add_run(' (Motivation for Change)')
-        elif count in [3, 4]:
-            paragraph.add_run(' (CPS Capacity)')
-        else:
-            paragraph.add_run(' (General Capacity)')
-        if count in [5, 13]:
-            paragraph.add_run(' (Reversed)')
+# Import the Readiness Source Text
 
+source_text = pd.read_excel(
+    'readiness_source_text.xlsx',
+    sheet_name=None)
+
+readiness_survey_text = source_text['CPS Readiness Survey']
+cps_aim_subscales_text = source_text['CPS-AIM Subscales']
+total_readiness_table_text = source_text['Total Readiness Table']
 
 # User Interface
 #   Think:Kids
@@ -275,7 +307,7 @@ print("\t\t      *        * *   *    *")
 print("\t\t      *         *    *      *")
 print("\n\t\t\tReadiness Reports!!\n\n")
 
-tk.cps_aim_repeated()
+tk.cps_aim_pre_readiness()
 
 
 # Global Variables
@@ -342,37 +374,37 @@ cps_aim_df.dropna(thresh=30, inplace=True)
 # Sub School
 # Only if there is a Sub School Question. Every school moving forward will have
 # a Sub School Question
-sub_org_column = []
+sub_org_variable_name = []
 for x, i in enumerate(meta_df['branching_logic']):
     # Check the branching logic field in the Data Dictionary to see if the
     # Organization we entered is present
     if '[' + cps_aim_org + '] = ' + "'" + str(
             cps_aim_choice) + "'" in str(i):
-        sub_org_column.append(meta_df.index[x])
+        sub_org_variable_name.append(meta_df.index[x])
 
 sub_org_dict = {}
-for i in sub_org_column:
-    sub_org_column = i
+for i in sub_org_variable_name:
+    sub_org_variable_name = i
     sub_org_dict = meta_dict(meta_df, i)
     sub_org_count = cps_aim_df[i].value_counts().to_dict()
     sub_org_survey_count = cps_aim_df[i].count()
 
 # User Interface
 #   Ask the user if they want to break the data down by Sub-Catagory.
-breakdown = int(input(
-    "Do you want an breakdown the data in any way?\
-\n0\tOrganization as a whole\n1\tBy Program\n2\tBy Staff Role\n\t"))
+breakdown = int(input("Generate a report for:\
+\n1\tThe organization as a whole\
+\n2\tA specific program within the Organization\n\t"))
 print('\nThanks!\n\n\n')
-# 1 = Yes, 2 = No
-# If Yes, ask the user which sub-catagory they would like to generate a report
-#   for. If No, the code will skip this.
-if breakdown == 1:
+# If 2, ask the user which sub-catagory they would like to generate a report
+# for. If 1, the code will skip this.
+if breakdown == 2:
     for key, value in sub_org_dict.items():
         print(str(key) + '\t' + value)
-    cps_aim_choice = int(input("Please enter the sub-catagory \
-number to generate a report on.\n\t"))
+    cps_aim_choice = int(input("Please enter the program \
+to generate a report on.\n\t"))
     print('Thanks!\n\n\n')
-    cps_aim_df = cps_aim_df[cps_aim_df[sub_org_column] == cps_aim_choice]
+    cps_aim_df = (
+        cps_aim_df[cps_aim_df[sub_org_variable_name] == cps_aim_choice])
     org = str(org) + ', ' + str(sub_org_dict[cps_aim_choice])
 
 # Variables from AIM Data Set
@@ -436,18 +468,10 @@ font_style('Title', 16, 'Times New Roman')
 
 # Title Page
 paragraph = document.add_paragraph('', style='Body Text 2')
-paragraph.add_run(
-    '\n\nCONFIDENTIAL'
-).bold = True
-paragraph.add_run(
-    '\n\n\nCPS Readiness Report'
-).bold = True
-paragraph.add_run(
-    '\n\n' + choice.title() + ': ' + org
-).bold = True
-paragraph.add_run(
-    '\n\nDate Prepared: ' + current_date
-).bold = True
+paragraph.add_run('\n\nCONFIDENTIAL').bold = True
+paragraph.add_run('\n\n\nCPS Readiness Report').bold = True
+paragraph.add_run('\n\n' + choice.title() + ': ' + org).bold = True
+paragraph.add_run('\n\nDate Prepared: ' + current_date).bold = True
 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 document.add_page_break()
 
@@ -488,7 +512,7 @@ paragraph.add_run(
 ).underline = True
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
-    '\tImplementation science has revealed that implementing any \
+    '\tImplementation Science has revealed that implementing any \
 evidence-based approach requires changing the behavior of staff and the \
 climate, culture, and structures of the organization. As a result, \
 implementing with fidelity and sustainability requires time, patience, \
@@ -496,10 +520,10 @@ discomfort, perseverance, and good leadership.')
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
     "\tThe staff at your " + choice + " completed surveys to provide us with \
-quantitative information. Additionally, focus groups with your \
+quantitative information. Additionally, optional focus groups with your \
 " + choice + "'s \
-staff gave us additional qualitative information that we have used toward \
-this final report. These focus groups facilitated our understanding of \
+staff may have given us additional qualitative information that we have used \
+toward this final report. These focus groups facilitate our understanding of \
 current practices and challenges that your staff face. Every organization has \
 challenges; understanding exactly what yours are will help us know how and \
 when to implement CPS to maximize its success."
@@ -527,10 +551,6 @@ row_cells[0].paragraphs[0].add_run('Percent:').underline = True
 row_cells[1].text = 'The percent of the entire sample who responded in that \
 way'
 row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Cum:').underline = True
-row_cells[1].text = 'Cumulative percent.  The percent of that response and \
-all that came in list before'
-row_cells = table.add_row().cells
 row_cells = table.add_row().cells
 row_cells[0].paragraphs[0].add_run('Obs:').underline = True
 row_cells[1].text = 'Number of respondents who completed this item or for \
@@ -552,6 +572,8 @@ row_cells = table.add_row().cells
 row_cells[0].paragraphs[0].add_run('Max:').underline = True
 row_cells[1].text = 'Maximum score for that item or category'
 
+document.add_picture('boxplotdescription.png', width=Inches(6.5))
+
 
 def set_col_widths(table, first_col, other_cols):
     widths = (Inches(first_col), Inches(other_cols))
@@ -561,8 +583,6 @@ def set_col_widths(table, first_col, other_cols):
 
 
 set_col_widths(table, 1, 6)
-
-document.add_page_break()
 
 
 # II. Quantitative Assessment
@@ -582,7 +602,7 @@ paragraph.add_run(
     '\tThe CPS-AIM inquires about factors related to CPS. This pre-training \
 measurement was taken so that we can monitor how staff’s adherence to the CPS \
 philosophy increases over time. We also hope that over time we will see \
-reduced burnout and perceptions of a more positive impact on youth.')
+your staff reporting reduced burnout.')
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
     'Survey Responders:'
@@ -599,7 +619,6 @@ program, job role, and CPS training status as follows:\n'
 def set_col_widths(table, first_col, other_cols):
     widths = (
         Inches(first_col),
-        Inches(other_cols),
         Inches(other_cols),
         Inches(other_cols))
     for row in table.rows:
@@ -640,10 +659,10 @@ if sub_org_dict:
 
 # Staff Training Table
 document.add_paragraph('', style='Normal')
-table = document.add_table(rows=1, cols=4, style='Normal Table')
+table = document.add_table(rows=1, cols=3, style='Normal Table')
 hdr_cells = table.rows[0].cells
 hdr_cells[0].paragraphs[0].add_run('CPS Training').bold = True
-headers = ['Freq', 'Percent', 'Cum.']
+headers = ['Freq', 'Percent']
 for count, header in enumerate(headers):
     hdr_cells[count + 1].paragraphs[0].add_run(header).underline = True
 total = 0
@@ -654,37 +673,38 @@ for key, value in training_dictionary.items():
     total += int(value)
     row_cells[2].text = str(
         round(float((value / training_total) * 100), 0)) + '%'
-    row_cells[3].text = str(
-        round(float((total / training_total) * 100), 0)) + '%'
-set_col_widths(table, 3, 1)
+set_col_widths(table, 4, 1)
 
 
 document.add_page_break()
 
 
-# The CPS Adherence and Impact Measure (CPS-AIM)
-def cps_aim_plot(kind):
-    paragraph = document.add_paragraph('', style='Normal')
-    paragraph.add_run(
-        '\tScores range from 1=Strongly Disagree to 7=Strongly Agree. \
-In the graph below, the horizontal line indicates a score of 4, which is \
-“Not Sure.” The goal is to be far above the horizontal line in Adherence to \
-CPS Philosophy and Perceptions of Positive Impact, and far below the \
-horizontal line in Burnout.'
-    )
+def box_plot(title,
+             df,
+             sub_title='',
+             dashed=False,
+             dashed_place=4,
+             max=7,
+             min=1):
+    """
+    title = the large text at the top of the graph
+    sub_title = the smaller text below the title
+    df = the dataframe containing the data for the box plot
+    """
     plt.figure()
-    results[results.columns[1:4]].mean().plot.bar(width=.9)
-    plt.suptitle('CPS Adherence and Impact Measure for ' + kind, fontsize=14)
-    plt.title('Pre-Training Score', fontsize=10)
-    plt.xticks((0, 1, 2),
-               ('Adherence', 'Positive Impact', 'Burnout'),
-               rotation=0)
-    plt.ylim(ymax=7, ymin=1)
-    plt.axhline(y=4, color='r', linestyle='-')
-    plt.ylabel('Mean Score')
+    sns.set(style='whitegrid')
+    sns.boxplot(data=df)
+    plt.suptitle(title, fontsize=14)
+    plt.title(sub_title, fontsize=10)
+    plt.xticks(fontsize=12)
+    plt.ylim(ymax=max, ymin=min)
+    if dashed is True:
+        plt.axhline(y=dashed_place, color='r', linestyle='--')
     plt.savefig('plt.png')
+    document.add_picture('plt.png')
 
 
+# The CPS Adherence and Impact Measure (CPS-AIM)
 # Creating the CPS AIM Graph for Pre-Training
 # Score the CPS AIM Educators
 cps_aime_cols = []
@@ -735,42 +755,14 @@ reverse_columns = []
 
 subscales = {
     'Adherence to CPS Philosophy': {
+        'Title': 'CPS-AIM Educators: Philosophy',
         'Columns': adherence_columns,
-        'Description': '\nThe Adherence Subscale of the CPS-AIM gives us an \
-indication of to what degree staff members believe in the CPS philosophy of \
-“kids do well if they can” and adhere to the belief that it is “skill, not \
-will” that leads to challenging behaviors. On this heatmap, each row is a \
-single staff member. Each column is an item that asks about the staff \
-member’s philosophy. Lighter colors indicate belief in conventional wisdom \
-and disagreement with the CPS philosophy. Darker colors indicate belief in \
-the CPS philosophy and disagreement with conventional wisdom. So we want this \
-graph to get darker over time, as more staff adhere to the CPS philosophy.'
-    },
-    'Perceptions of Positive Impact': {
-        'Columns': perception_columns,
-        'Description': '\nThe Perception of Positive Impact Subscale gives \
-us an indication of how confident staff are that they are having a positive \
-impact on the youth with whom they work. (Note that this is the staff \
-member’s self-perception, and is not necessarily reflective of the positive \
-impact they are truly having.) On this heatmap, each row is a single staff \
-member. Each column is an item that asks about the staff member’s perception \
-of positive impact. Lighter colors indicate low perceptions of positive \
-impact, which could indicate that a staff member feels unable to help youth, \
-or could indicate that the staff member understands that s/he has more to \
-learn in order to have a positive impact. Darker colors indicate greater \
-perceptions of positive impact; i.e., greater confidence helping challenging \
-students to succeed. So we want this graph to get darker over time, or to \
-stay dark if perceived competence was positive to start.'
+        'Description': cps_aim_subscales_text.iloc[1]['Text']
     },
     'Burnout': {
+        'Title': 'CPS-AIM Educators: Burnout',
         'Columns': burnout_columns,
-        'Description': '\nThe Burnout Subscale of the CPS-AIM gives us an \
-indication of the level of stress, or burnout, that staff are feeling. On \
-this heatmap, each row is a single staff member. Each column is an item that \
-asks about the staff member’s feelings of stress. Lighter colors indicate \
-less stress and burnout. Darker colors indicate more stress and burnout. So \
-we want this graph to get lighter over time, or to stay light, if stress and \
-burnout were low to start.'
+        'Description': cps_aim_subscales_text.iloc[2]['Text']
     }
 }
 
@@ -800,8 +792,14 @@ for i in reverse_columns:
         inplace=True)
 
 if not results.empty:
-    cps_aim_plot('Educational')
-    document.add_picture('plt.png')
+    paragraph = document.add_paragraph('', style='Normal')
+    paragraph.add_run(cps_aim_subscales_text.iloc[0]['Text'])
+    sns_results = results[results.columns[[1, 3]]]
+    sns_results.columns = ['Philosophy', 'Burnout']
+    box_plot(title='CPS Adherence and Impact Measure for Educational Staff',
+             df=sns_results,
+             sub_title='Pre-Training Score',
+             dashed=True)
 
     # Adding the Summary: section, to be filled out later by Alisha
     paragraph = document.add_paragraph('', style='Normal')
@@ -811,14 +809,14 @@ if not results.empty:
     for i in subscales.values():
         heat_map(
             df=cps_aime_df[i['Columns']],
-            chart_title='CPS-AIM Educators',
+            chart_title=i['Title'],
             min=1,
             max=7,
             height=8.5,
-            width=4
-        )
+            width=4)
         table = document.add_table(rows=1, cols=2, style='Normal Table')
-        cell = table.rows[0].cells[0].paragraphs[0].add_run().add_picture('plt.png')
+        cell = table.rows[0].cells[0].paragraphs[0].add_run(
+        ).add_picture('plt.png')
         cell = table.rows[0].cells[1].paragraphs[0].add_run(i['Description'])
 
 
@@ -872,42 +870,14 @@ reverse_columns = []
 
 subscales = {
     'Adherence to CPS Philosophy': {
+        'Title': 'CPS-AIM Clinical: Philosophy',
         'Columns': adherence_columns,
-        'Description': '\nThe Adherence Subscale of the CPS-AIM gives us an \
-indication of to what degree staff members believe in the CPS philosophy of \
-“kids do well if they can” and adhere to the belief that it is “skill, not \
-will” that leads to challenging behaviors. On this heatmap, each row is a \
-single staff member. Each column is an item that asks about the staff \
-member’s philosophy. Lighter colors indicate belief in conventional wisdom \
-and disagreement with the CPS philosophy. Darker colors indicate belief in \
-the CPS philosophy and disagreement with conventional wisdom. So we want this \
-graph to get darker over time, as more staff adhere to the CPS philosophy.'
-    },
-    'Perceptions of Positive Impact': {
-        'Columns': perception_columns,
-        'Description': '\nThe Perception of Positive Impact Subscale gives \
-us an indication of how confident staff are that they are having a positive \
-impact on the youth with whom they work. (Note that this is the staff \
-member’s self-perception, and is not necessarily reflective of the positive \
-impact they are truly having.) On this heatmap, each row is a single staff \
-member. Each column is an item that asks about the staff member’s perception \
-of positive impact. Lighter colors indicate low perceptions of positive \
-impact, which could indicate that a staff member feels unable to help youth, \
-or could indicate that the staff member understands that s/he has more to \
-learn in order to have a positive impact. Darker colors indicate greater \
-perceptions of positive impact; i.e., greater confidence helping challenging \
-students to succeed. So we want this graph to get darker over time, or to \
-stay dark if perceived competence was positive to start.'
+        'Description': cps_aim_subscales_text.iloc[1]['Text']
     },
     'Burnout': {
+        'Title': 'CPS-AIM Clinical: Burnout',
         'Columns': burnout_columns,
-        'Description': '\nThe Burnout Subscale of the CPS-AIM gives us an \
-indication of the level of stress, or burnout, that staff are feeling. On \
-this heatmap, each row is a single staff member. Each column is an item that \
-asks about the staff member’s feelings of stress. Lighter colors indicate \
-less stress and burnout. Darker colors indicate more stress and burnout. So \
-we want this graph to get lighter over time, or to stay light, if stress and \
-burnout were low to start.'
+        'Description': cps_aim_subscales_text.iloc[2]['Text']
     }
 }
 
@@ -938,8 +908,14 @@ for i in reverse_columns:
         inplace=True)
 
 if not results.empty:
-    cps_aim_plot('Systems')
-    document.add_picture('plt.png')
+    paragraph = document.add_paragraph('', style='Normal')
+    paragraph.add_run(cps_aim_subscales_text.iloc[0]['Text'])
+    sns_results = results[results.columns[[1, 3]]]
+    sns_results.columns = ['Philosophy', 'Burnout']
+    box_plot(title='CPS Adherence and Impact Measure for Clinical Staff',
+             df=sns_results,
+             sub_title='Pre-Training Score',
+             dashed=True)
 
     # Adding the Summary: section, to be filled out later by Alisha
     paragraph = document.add_paragraph('', style='Normal')
@@ -949,14 +925,14 @@ if not results.empty:
     for i in subscales.values():
         heat_map(
             df=cps_aims_df[i['Columns']],
-            chart_title='CPS-AIM Clinical',
+            chart_title=i['Title'],
             min=1,
             max=7,
             height=8.5,
-            width=4
-        )
+            width=4)
         table = document.add_table(rows=1, cols=2, style='Normal Table')
-        cell = table.rows[0].cells[0].paragraphs[0].add_run().add_picture('plt.png')
+        cell = table.rows[0].cells[0].paragraphs[0].add_run(
+        ).add_picture('plt.png')
         cell = table.rows[0].cells[1].paragraphs[0].add_run(i['Description'])
 
 
@@ -993,19 +969,19 @@ org_data_readiness = org_data_readiness.dropna(thresh=15)
 
 
 # Sub School
-sub_org_column = []
+sub_org_variable_name = []
 for x, i in enumerate(metadata_readiness['branching_logic']):
     if '[' + cps_readiness_org + '] = ' + "'" + str(
             org_number_readiness) + "'" in str(i):
-        sub_org_column.append(metadata_readiness.index[x])
+        sub_org_variable_name.append(metadata_readiness.index[x])
 sub_org_dict = {}
-for i in sub_org_column:
-    sub_org_column = i
+for i in sub_org_variable_name:
+    sub_org_variable_name = i
     sub_org_dict = meta_dict(metadata_readiness, i)
     sub_org_count = org_data_readiness[i].value_counts().to_dict()
     sub_org_survey_count = org_data_readiness[i].count()
 
-if breakdown == 1:
+if breakdown == 2:
     for key, value in sub_org_dict.items():
         print(str(key) + '\t' + value)
     org_number_readiness = int(input("Please enter the program \
@@ -1014,22 +990,18 @@ if breakdown == 1:
 
 # Retrieving and sorting the Readiness Data from REDcap
     org_data_readiness = org_data_readiness[
-        org_data_readiness[sub_org_column] == org_number_readiness]
+        org_data_readiness[sub_org_variable_name] == org_number_readiness]
 
 # Remove participants who did not answer at least 15 questions
 
 # Replace any N/A answers (9) with np.nan so that the data is not skewed
+sub_org_column = org_data_readiness[sub_org_variable_name]
 org_data_readiness = org_data_readiness.replace(9, np.nan)
+org_data_readiness[sub_org_variable_name] = sub_org_column
+
 
 # Reverse the Reverse scored columns
-reverse = [
-    'staff5', 'staff13', 'admin5', 'admin13'
-]
-
-for i in reverse:
-    org_data_readiness[i].replace(
-        [1, 2, 3, 4, 5], [5, 4, 3, 2, 1],
-        inplace=True)
+score.reversed_readiness_df(org_data_readiness)
 
 # Variables from Readiness Data Set
 
@@ -1043,72 +1015,32 @@ role_count_readiness = (
     org_data_readiness['rolestaff'].value_counts().to_dict())
 role_survey_count_readiness = org_data_readiness['rolestaff'].count()
 
+# Sub Organization variables
+sub_org_dictionary_readiness = (
+    meta_dict(metadata_readiness, sub_org_variable_name)
+)
+
+sub_org_count_readiness = (
+    org_data_readiness[sub_org_variable_name].value_counts().to_dict()
+)
+sub_org_survey_count_readiness = (
+    org_data_readiness[sub_org_variable_name].count()
+)
+
 # Years at Organization Dictionary - Readiness
 years_at_org = meta_dict(metadata_readiness, 'yearsatorg')
 years_at_org_count = (
     org_data_readiness['yearsatorg'].value_counts().to_dict())
 years_at_org_total_count = org_data_readiness['yearsatorg'].count()
+
 # Training Dictionary
 training_dictionary = meta_dict(metadata_readiness, 'training')
 training_count = (org_data_readiness['training'].value_counts().to_dict())
 training_total_count = org_data_readiness['training'].count()
 
 # CPS Readiness Assessment
-paragraph = document.add_paragraph('', style='Body Text')
-paragraph.add_run('The CPS Readiness Survey').bold = True
-paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    '\tEvaluating readiness to implement an evidence-informed \
-approach like CPS revolves around several factors. These include an agency’s ')
-paragraph.add_run('motivation for change, its general capacity').italic = True
-paragraph.add_run(' for implementation of any intervention, and its ')
-paragraph.add_run(
-    'specific capacity for implementation of the intervention in question'
-).italic = True
-paragraph.add_run(
-    ' (in this case, CPS). These factors can vary by program or by role \
-within the ' + choice + '.'
-)
-paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run('\tUnder the category of ')
-paragraph.add_run('Motivation for Change').bold = True
-paragraph.add_run(
-    ', we assess whether the administrators/leaders as well as other staff \
-see the need, and have enthusiasm for, a different or additional approach. ')
-paragraph.add_run('Capacity in General').bold = True
-paragraph.add_run(
-    ' refers to things such as whether staff feel appropriately supported and \
-satisfied with their work, whether sufficient supervision, communication and \
-documentation structures are in place, and whether there is strong leadership \
-present to facilitate implementation. '
-)
-paragraph.add_run('Capacity for CPS').bold = True
-paragraph.add_run(
-    ' refers to a site’s ability to implement CPS in particular. For example, \
-because CPS typically requires a significant shift in mindset, culture, and \
-behavior from staff, it is even more important that influential \
-culture-carriers be present. In addition, existing models of intervention \
-must not directly conflict with the basic tenets of CPS that run counter to \
-many conventional approaches aimed at motivating more compliant behavior \
-externally through use of rewards and punishments.'
-)
-paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    '\tTo conduct a comprehensive readiness assessment across programs, we \
-utilize a readiness survey designed explicitly for this purpose and based on \
-the latest research on organizational readiness for implementation of an \
-innovation (Scaccia et al., 2015). ')
+add_document_text_from_excel(readiness_survey_text)
 document.add_page_break()
-
-paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run('Survey Responders:').bold = True
-paragraph.add_run(
-    '\n\t' + str(survey_count_readiness) + ' total staff members responded to \
-the CPS Readiness Surveys in a valid and reliable way. The quantitative \
-analyses on the next few pages of this report are based on data collected \
-from those respondents. The respondents are broken down by \
-' + choice + ', job role and years of employment as follows:'
-)
 
 # Staff Role Table Readiness
 make_table(
@@ -1148,18 +1080,20 @@ paragraph.add_run('Readiness Survey Results, for All Employees').bold = True
 # Score the Readiness Survey
 # Score the Educators Version
 results_educators = []
-results_educators = score.cps_readiness_educator(
+results_educators = score.cps_readiness(
     org_data_readiness,
     results_educators,
-    'record_id')
+    'record_id',
+    'staff')
 results_educators = results_educators.dropna(thresh=3)
 
 # Score the Admin Version
 results_admin = []
-results_admin = score.cps_readiness_admin(
+results_admin = score.cps_readiness(
     org_data_readiness,
     results_admin,
-    'record_id')
+    'record_id',
+    'admin')
 results_admin = results_admin.dropna(thresh=3)
 
 frames = [results_educators, results_admin]
@@ -1171,9 +1105,8 @@ org_data_readiness = pd.merge(
     right=results,
     left_on='record_id',
     right_on='id')
-
 # CPS Readiness Measure Score Variables.
-motivation_dict_admin = {
+fit_dict_admin = {
     'admin1': 'Policies need improvement',
     'admin2': 'CPS is improvement',
     'admin5': 'CPS too hard (reversed)',
@@ -1181,7 +1114,7 @@ motivation_dict_admin = {
     'admin7': 'CPS consistent with values',
     'admin8': 'CPS consistent with practice'
 }
-motivation_dict_staff = {
+fit_dict_staff = {
     'staff1': 'Policies need improvement',
     'staff2': 'CPS is improvement',
     'staff5': 'CPS too hard (reversed)',
@@ -1189,46 +1122,48 @@ motivation_dict_staff = {
     'staff7': 'CPS consistent with values',
     'staff8': 'CPS consistent with practice'
 }
-general_capacity_dict_admin = {
+capacity_dict_admin = {
+    'admin3': 'Leaders are committed',
+    'admin4': 'Internal CPS team',
     'admin9': 'We encourage innovation',
     'admin10': 'Staff want to learn more',
     'admin11': 'Staff supported by leaders',
     'admin12': 'Staff communicate well',
     'admin13': 'Too many interventions (reversed)',
+    'admin14': 'Financially committed',
+    'admin15': 'Time to brainstorm',
+    'admin16': 'Time to pull youth aside'
 }
-general_capacity_dict_staff = {
+capacity_dict_staff = {
+    'staff3': 'Leaders are committed',
+    'staff4': 'Internal CPS team',
     'staff9': 'We encourage innovation',
     'staff10': 'Staff want to learn more',
     'staff11': 'Staff supported by leaders',
     'staff12': 'Staff communicate well',
     'staff13': 'Too many interventions (reversed)',
+    'staff14': 'Receive supervision or mentorship',
+    'staff15': 'Time to brainstorm',
+    'staff16': 'Time to pull youth aside'
 }
-cps_capacity_dict_admin = {
-    'admin3': 'Leaders are committed',
-    'admin4': 'Internal CPS team',
-    'admin14': 'Financially committed',
-}
-cps_capacity_dict_staff = {
-    'staff3': 'Leaders are committed',
-    'staff4': 'Internal CPS team',
-}
+
 # BIG DICTIONARY OF READINESS INFORMATION!!!
 readiness_data = {
-    'Motivation': {
+    'Fit': {
         'All Staff': {
             'Overall Stats': stats_dict(
-                org_data_readiness, 'readiness_motiv_mean'),
+                org_data_readiness, 'readiness_fit_mean'),
         },
         'Administration': {
             'Overall': stats_dict(
-                results_admin, 'readiness_motiv_mean')
+                results_admin, 'readiness_fit_mean')
         },
         'Staff': {
             'Overall': stats_dict(
-                results_educators, 'readiness_motiv_mean')
+                results_educators, 'readiness_fit_mean')
         }
     },
-    'General Capacity': {
+    'Capacity': {
         'All Staff': {
             'Overall Stats': stats_dict(
                 org_data_readiness, 'readiness_capacity_mean'),
@@ -1241,61 +1176,33 @@ readiness_data = {
             'Overall': stats_dict(
                 results_educators, 'readiness_capacity_mean')
         }
-    },
-    'CPS Capacity': {
-        'All Staff': {
-            'Overall Stats': stats_dict(
-                org_data_readiness, 'readiness_cps_cap_mean'),
-        },
-        'Administration': {
-            'Overall': stats_dict(
-                results_admin, 'readiness_cps_cap_mean')
-        },
-        'Staff': {
-            'Overall': stats_dict(
-                results_educators, 'readiness_cps_cap_mean')
-        }
     }
 }
 
 
-for key, value in motivation_dict_admin.items():
-    readiness_data['Motivation']['Administration'][key] = {
+for key, value in fit_dict_admin.items():
+    readiness_data['Fit']['Administration'][key] = {
         'Full Question': cell_content(metadata_readiness, key, 'field_label'),
         'Trunc Question': value,
         'Stats': stats_dict(org_data_readiness, key)
     }
 
-for key, value in motivation_dict_staff.items():
-    readiness_data['Motivation']['Staff'][key] = {
+for key, value in fit_dict_staff.items():
+    readiness_data['Fit']['Staff'][key] = {
         'Full Question': cell_content(metadata_readiness, key, 'field_label'),
         'Trunc Question': value,
         'Stats': stats_dict(org_data_readiness, key)
     }
 
-for key, value in general_capacity_dict_admin.items():
-    readiness_data['General Capacity']['Administration'][key] = {
+for key, value in capacity_dict_admin.items():
+    readiness_data['Capacity']['Administration'][key] = {
         'Full Question': cell_content(metadata_readiness, key, 'field_label'),
         'Trunc Question': value,
         'Stats': stats_dict(org_data_readiness, key)
     }
 
-for key, value in general_capacity_dict_staff.items():
-    readiness_data['General Capacity']['Staff'][key] = {
-        'Full Question': cell_content(metadata_readiness, key, 'field_label'),
-        'Trunc Question': value,
-        'Stats': stats_dict(org_data_readiness, key)
-    }
-
-for key, value in cps_capacity_dict_admin.items():
-    readiness_data['CPS Capacity']['Administration'][key] = {
-        'Full Question': cell_content(metadata_readiness, key, 'field_label'),
-        'Trunc Question': value,
-        'Stats': stats_dict(org_data_readiness, key)
-    }
-
-for key, value in cps_capacity_dict_staff.items():
-    readiness_data['CPS Capacity']['Staff'][key] = {
+for key, value in capacity_dict_staff.items():
+    readiness_data['Capacity']['Staff'][key] = {
         'Full Question': cell_content(metadata_readiness, key, 'field_label'),
         'Trunc Question': value,
         'Stats': stats_dict(org_data_readiness, key)
@@ -1303,32 +1210,26 @@ for key, value in cps_capacity_dict_staff.items():
 
 # Admin
 admin_readiness_results = {
-    'Motivation for Change': stats_dict(
-        results_admin, 'readiness_motiv_mean'),
-    'General Capacity': stats_dict(
-        results_admin, 'readiness_capacity_mean'),
-    'Capacity for CPS': stats_dict(
-        results_admin, 'readiness_cps_cap_mean')
+    'Fit': stats_dict(
+        results_admin, 'readiness_fit_mean'),
+    'Capacity': stats_dict(
+        results_admin, 'readiness_capacity_mean')
 }
 
 # Educators
 readiness_results = {
-    'Motivation for Change': stats_dict(
-        results_educators, 'readiness_motiv_mean'),
-    'General Capacity': stats_dict(
-        results_educators, 'readiness_capacity_mean'),
-    'Capacity for CPS': stats_dict(
-        results_educators, 'readiness_cps_cap_mean'),
+    'Fit': stats_dict(
+        results_educators, 'readiness_fit_mean'),
+    'Capacity': stats_dict(
+        results_educators, 'readiness_capacity_mean')
 }
 
 # All
 all_readiness_results = {
-    'Motivation for Change': stats_dict(
-        org_data_readiness, 'readiness_motiv_mean'),
-    'General Capacity': stats_dict(
-        org_data_readiness, 'readiness_capacity_mean'),
-    'Capacity for CPS': stats_dict(
-        org_data_readiness, 'readiness_cps_cap_mean')
+    'Fit': stats_dict(
+        org_data_readiness, 'readiness_fit_mean'),
+    'Capacity': stats_dict(
+        org_data_readiness, 'readiness_capacity_mean')
 }
 
 
@@ -1349,37 +1250,18 @@ def set_col_widths(table, first_col, other_cols):
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
     '\tPossible responses for readiness items range from 1 (Strongly Disagree)\
- to 5 (Strongly Agree), with a 3 response for "Not Sure."')
-readiness_tables(all_readiness_results)
+ to 5 (Strongly Agree). In the graph below, the dashed horizontal line \
+indicates a score of 3, which is “Not Sure.”')
+sns_results = org_data_readiness[org_data_readiness.columns[-2:]]
+sns_results.columns = ['Fit', 'Capacity']
+box_plot(title='Readiness Measure',
+         df=sns_results,
+         dashed=True,
+         dashed_place=3,
+         max=5)
 paragraph = document.add_paragraph('\n', style='Normal')
 paragraph.add_run('Summary:  Overall, staff at ' + org + ' are…\
 \n\nThis spread can be seen in more detail below.')
-
-document.add_page_break()
-
-# Create the Histrogram for The CPS Readiness Survey
-# Motivation, General Capacity, and Capacity for CPS, for ALL STAFF
-paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    'Detail View:  Motivation, General Capacity, and Capacity for CPS, \
-for ALL STAFF'
-).bold = True
-
-histogram_general(
-    'Motivation of All Staff',
-    org_data_readiness,
-    'readiness_motiv_mean')
-
-histogram_general(
-    'General Capacity of All Staff',
-    org_data_readiness,
-    'readiness_capacity_mean')
-
-histogram_general(
-    'CPS Capacity of All Staff',
-    org_data_readiness,
-    'readiness_cps_cap_mean')
-
 
 document.add_page_break()
 
@@ -1403,60 +1285,111 @@ document.add_page_break()
 
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
-    'Detail View: Motivation, General Capacity, and Capacity for CPS, by Role:'
+    'Detail View: Fit and Capacity'
 ).bold = True
 
-role_count_threshold = int(
-    input('Under what number will we exclude staff from the analysis?\n\t')
-)
+count_threshold = int(input('Under what number of staff in a particular \
+role or program will we exclude staff from the graphs?\n\t'))
 print('Thanks!\n\n\n')
-count_role_graphs = []
-for x, i in enumerate(org_data_readiness['rolestaff']):
-    if role_count_readiness[i] < role_count_threshold:
-        org_data_readiness.drop(x, inplace=True)
-    else:
-        count_role_graphs.append(i)
 
+# Staff Roles
+
+roles_to_be_cut = []
+
+for key, value in role_count_readiness.items():
+    if value < count_threshold:
+        roles_to_be_cut.append(key)
+
+# Problem with picture which category is under threshold... Think On THIS!!
+role_count_df = org_data_readiness
+count_role_graphs = []
+for index in role_count_df.index:
+    if role_count_df.loc[index, 'rolestaff'] in roles_to_be_cut:
+        role_count_df.drop(index, inplace=True)
+    else:
+        count_role_graphs.append(role_count_df.loc[index, 'rolestaff'])
 
 count_role_graphs = int(np.ceil(len(set(count_role_graphs)) / 2))
 count_role_graphs = int(count_role_graphs * 2)
 
-unique_rolestaff = org_data_readiness['rolestaff'].nunique()
+unique_rolestaff = role_count_df['rolestaff'].nunique()
 unique_rolestaff = int(np.ceil(unique_rolestaff / 2))
-org_data_readiness[
-    'rolestaff'
-] = org_data_readiness['rolestaff'].map(
+role_count_df['rolestaff'] = role_count_df['rolestaff'].map(
     role_dictionary_readiness)
-
 
 paragraph = document.add_paragraph('\t', style='Normal')
 paragraph.add_run(
     'In order to preserve confidentiality, categories where there were less \
-than ' + str(role_count_threshold) + ' \
-participants who answered the survey in their role were excluded from the \
-following analyses.')
-
+than ' + str(count_threshold) + ' participants who answered the survey \
+were excluded from the following graphs.')
 
 histogram_by(
-    'Motivation by Role',
-    org_data_readiness,
-    'readiness_motiv_mean',
-    'rolestaff')
+    title='Fit by Role',
+    df=role_count_df,
+    df_column='readiness_fit_mean',
+    sort_by='rolestaff',
+    height=count_role_graphs,
+    columns=unique_rolestaff)
 histogram_by(
-    'General Capacity by Role',
-    org_data_readiness,
-    'readiness_capacity_mean',
-    'rolestaff')
-histogram_by(
-    'CPS Capacity by Role',
-    org_data_readiness,
-    'readiness_cps_cap_mean',
-    'rolestaff')
+    title='Capacity by Role',
+    df=role_count_df,
+    df_column='readiness_capacity_mean',
+    sort_by='rolestaff',
+    height=count_role_graphs,
+    columns=unique_rolestaff)
+
+# Programs
+histograms_by_program = input('Would we like a breakdown of the histograms by \
+program in addition to the breakdown by role?\n1\tYes\n2\tNo\n\t')
+print('Thanks!')
+
+
+if histograms_by_program == '1':
+    program_count_df = org_data_readiness
+    count_programs_graphs = []
+    programs_to_be_cut = []
+    for key, value in sub_org_count.items():
+        if value < count_threshold:
+            programs_to_be_cut.append(key)
+
+    for index in program_count_df.index:
+        if program_count_df.loc[
+            index, sub_org_variable_name
+        ] in programs_to_be_cut:
+            program_count_df.drop(index, inplace=True)
+        else:
+            count_programs_graphs.append(
+                program_count_df.loc[index, sub_org_variable_name])
+
+    count_programs_graphs = int(np.ceil(len(set(count_programs_graphs)) / 2))
+    count_programs_graphs = int(count_programs_graphs * 2)
+
+    unique_programs = program_count_df[sub_org_variable_name].nunique()
+    unique_programs = int(np.ceil(unique_programs / 2))
+    program_count_df[
+        sub_org_variable_name
+    ] = program_count_df[sub_org_variable_name].map(
+        sub_org_dictionary_readiness)
+
+    histogram_by(
+        title='Fit by Program',
+        df=program_count_df,
+        df_column='readiness_fit_mean',
+        sort_by=sub_org_variable_name,
+        height=count_programs_graphs,
+        columns=unique_programs)
+    histogram_by(
+        title='Capacity by Program',
+        df=program_count_df,
+        df_column='readiness_capacity_mean',
+        sort_by=sub_org_variable_name,
+        height=count_programs_graphs,
+        columns=unique_programs)
 
 # ADD STAFF AND ADMIN TABLES
 paragraph = document.add_paragraph('\n', style='Normal')
 paragraph.add_run('Detailed Report of ').bold = True
-p = paragraph.add_run('Educational Staffs’')
+p = paragraph.add_run('Staffs’')
 p.bold = True
 p.underline = True
 paragraph.add_run(' Responses by Item:').bold = True
@@ -1465,10 +1398,9 @@ detailed_report('staff')
 
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
-    '\t* Items have been truncated here to conserve space.\nSee Appendix for \
+    '\t* Items have been truncated here to conserve space. See Appendix for \
 item wording.'
 ).bold = True
-document.add_page_break()
 
 paragraph = document.add_paragraph('\n', style='Normal')
 paragraph.add_run('Detailed Report of ').bold = True
@@ -1481,52 +1413,10 @@ detailed_report('admin')
 
 paragraph = document.add_paragraph('', style='Normal')
 paragraph.add_run(
-    '\t* Items have been truncated here to conserve space.\nSee Appendix for \
+    '\t* Items have been truncated here to conserve space. See Appendix for \
 item wording.'
 ).bold = True
 document.add_page_break()
-
-# III. Qualitative Assessment
-paragraph = document.add_paragraph('', style='Body Text')
-paragraph.add_run(
-    '\tIII.\t'
-)
-paragraph.add_run(
-    'Qualitative Assessment'
-).underline = True
-paragraph = document.add_paragraph('', style='Normal')
-paragraph.add_run(
-    'Summary of Need:'
-).bold = True
-paragraph.add_run('\n')
-paragraph.add_run(
-    '\nReadiness strengths:'
-).bold = True
-paragraph.add_run('\n')
-paragraph.add_run(
-    '\nReadiness areas in need of improvement:'
-).bold = True
-paragraph.add_run('\n')
-paragraph = document.add_paragraph(
-    '\nReadiness Area: Motivation for Change', style='Normal'
-)
-document.add_paragraph(
-    '', style='List Bullet 2'
-)
-paragraph = document.add_paragraph(
-    '\nReadiness Area: Capacity in General', style='Normal'
-)
-document.add_paragraph(
-    '', style='List Bullet 2'
-)
-paragraph = document.add_paragraph(
-    '\nReadiness Area: Specific Capacity for CPS', style='Normal'
-)
-document.add_paragraph(
-    '', style='List Bullet 2'
-)
-document.add_page_break()
-
 
 # Heat Maps
 paragraph = document.add_paragraph('', style='Body Text')
@@ -1538,7 +1428,7 @@ item (columns) rated by each respondent (rows). Items have been truncated to \
 save space; see the appendix for original item wording. Scores have been \
 reversed when necessary so that darker colors always indicate better \
 readiness. Thus, columns with a lot of beige or light green indicate \
-readiness areas in need of improvement'
+readiness areas in need of improvement.'
 )
 paragraph = document.add_paragraph('', style='Body Text')
 
@@ -1607,9 +1497,6 @@ for i in readiness_columns_staff_trunc:
 staff = staff.reset_index().drop(['index'], axis=1)
 staff.columns = staff_columns
 
-# Can get around 35 participants on each heatmap. Make function that will loop
-# Through the dataframe and make a heatmap for each 40 participant groups
-
 if not staff.empty:
     heat_map(
         df=staff,
@@ -1634,6 +1521,42 @@ if not admin.empty:
     paragraph = document.add_paragraph('', style='Body Text')
     paragraph.add_run().add_picture('plt.png')
     document.add_page_break()
+
+# III. Qualitative Assessment
+paragraph = document.add_paragraph('', style='Body Text')
+paragraph.add_run(
+    '\tIII.\t'
+)
+paragraph.add_run(
+    'Qualitative Assessment'
+).underline = True
+paragraph = document.add_paragraph('', style='Normal')
+paragraph.add_run(
+    'Summary of Need:'
+).bold = True
+paragraph.add_run('\n')
+paragraph.add_run(
+    '\nReadiness strengths:'
+).bold = True
+paragraph.add_run('\n')
+paragraph.add_run(
+    '\nReadiness areas in need of improvement:'
+).bold = True
+paragraph.add_run('\n')
+paragraph = document.add_paragraph(
+    '\nReadiness Area: Fit', style='Normal'
+)
+document.add_paragraph(
+    '', style='List Bullet 2'
+)
+paragraph = document.add_paragraph(
+    '\nReadiness Area: Capacity', style='Normal'
+)
+document.add_paragraph(
+    '', style='List Bullet 2'
+)
+document.add_page_break()
+
 
 # IV. CPS Readiness Summary
 
@@ -1682,170 +1605,21 @@ hdr_cells = table.rows[0].cells
 hdr_cells[1].paragraphs[0].add_run(
     'Score:    0=Not at all    1=Partially    2=Definitely'
 )
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run(
-    'Motivation for the Innovation*:').bold = True
-row_cells[1].paragraphs[0].add_run(
-    'Perceived incentives and disincentives that contribute to the \
-desirability to use CPS').bold = True
-row_cells[2].paragraphs[0].add_run('AVG:').bold = True
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Relative advantage')
-row_cells[1].paragraphs[0].add_run(
-    'Is CPS perceived as being better than what it is being compared against \
-or what already exists (including perceptions of anticipated outcomes)? Is \
-there a desire to change if the organization has a motivation-based system? \
-Is there staff buy-in at all levels?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Compatibility')
-row_cells[1].paragraphs[0].add_run(
-    'Is CPS perceived to be consistent with existing values, cultural norms, \
-experiences, and needs of potential users? If other treatment models are \
-being implemented within the organization, is implementation consistent with \
-the CPS philosophy? Is there an organization-wide stance on critical \
-incidents that is consistent with CPS (e.g., a priority to reduce coercive \
-and physical intervention)?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Complexity')
-row_cells[1].paragraphs[0].add_run(
-    'Is CPS perceived as being of reasonable complexity to understand and \
-use?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Trialability')
-row_cells[1].paragraphs[0].add_run(
-    'Can CPS be tested and experimented on within this organization? Does \
-the organization feel they can try it out or pilot it in a small group?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Observability')
-row_cells[1].paragraphs[0].add_run(
-    'Will outcomes that result from CPS be visible to others? Will there be \
-observable short term gains or "small wins?"')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Priority')
-row_cells[1].paragraphs[0].add_run(
-    'Is CPS mandated/required or will it likely solve a problem that the \
-organization must solve?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('General Capacity:').bold = True
-row_cells[1].paragraphs[0].add_run(
-    'Factors that contribute to the ability of the organization to implement \
-any innovation').bold = True
-row_cells[2].paragraphs[0].add_run('AVG:').bold = True
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Culture')
-row_cells[1].paragraphs[0].add_run(
-    'Is the overall culture one that feels open to innovation?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Climate')
-row_cells[1].paragraphs[0].add_run(
-    'How do employees collectively perceive, appraise, and feel about their \
-current working environment? Does the organization have a low burnout rate, \
-do they feel adequately staffed and supported by leadership?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Organizational innovativeness')
-row_cells[1].paragraphs[0].add_run(
-    'Are the staff generally receptive toward change?  Are staff feeling \
-overwhelmed by multiple initiatives and EBPs? Are staff engaged in regular \
-professional development opportunities?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Resource utilization')
-row_cells[1].paragraphs[0].add_run(
-    'Are there fiscal resources to put to training and coaching over the \
-longer term, to ensure sustainability? Does the budget contain allocated \
-funding for implementation of a new intervention or is there other evidence \
-of a plan for ongoing financial support?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Leadership')
-row_cells[1].paragraphs[0].add_run(
-    'Do organizational leaders articulate and support organizational \
-activities? Do leadership staff have the time and energy needed to devote \
-to a new intervention?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Structure')
-row_cells[1].paragraphs[0].add_run(
-    'Does the organization have good processes for good organizational \
-functioning on a day-to-day basis? Does the organization have clear and \
-organized documentation practices, good communication between staff and \
-shifts, and good supervisory structures?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Staff capacity')
-row_cells[1].paragraphs[0].add_run(
-    'Do the staff possess the appropriate skills, education, and expertise \
-to be able to engage with an innovation?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('CPS-Specific Capacity:').bold = True
-row_cells[1].paragraphs[0].add_run(
-    'The human, technical, and fiscal conditions that are important for \
-successfully implementing this particular innovation with quality').bold = True
-row_cells[2].paragraphs[0].add_run('AVG:').bold = True
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('CPS-speciﬁc knowledge, skills, and \
-abilities')
-row_cells[1].paragraphs[0].add_run(
-    'Do staff have the knowledge, skills, and abilities needed for CPS in \
-particular, or will they be likely to gain these?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Program champion')
-row_cells[1].paragraphs[0].add_run(
-    'Is there a CPS champion (Individual who will put charismatic support \
-behind CPS through connections, expertise, and social inﬂuence)?  Are there \
-individuals that can comprise a core team of internal CPS coaches or CPS \
-team leaders providing regular support within the organization? ')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Speciﬁc implementation supports')
-row_cells[1].paragraphs[0].add_run(
-    'Is there a presence of strong, convincing, informed, and demonstrable \
-support for CPS at the leadership level? Does the organization have the \
-policies, software, or hardware necessary to get CPS off the ground?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Available time')
-row_cells[1].paragraphs[0].add_run(
-    'Can direct care hours be adjusted to allow for ongoing coaching in CPS? \
-Are staff going to have adequate time to formally learn about CPS?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Finance')
-row_cells[1].paragraphs[0].add_run(
-    'If reimbursement for services is needed, are current reimbursement \
-mechanisms able to cover CPS?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Interorganizational relationships')
-row_cells[1].paragraphs[0].add_run(
-    'Are there relationships between (a) providers and support systems and \
-(b) different provider organizations that can be used to facilitate \
-implementation (e.g., referral sources, etc)?')
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('Informing stakeholders')
-row_cells[1].paragraphs[0].add_run(
-    "Will the organization be able to answer specific stakeholders' questions \
-about CPS (e.g., through development of materials)?")
-row_cells[2].paragraphs[0].add_run('-')
-row_cells = table.add_row().cells
-row_cells = table.add_row().cells
-row_cells[0].paragraphs[0].add_run('-')
-row_cells[1].paragraphs[0].add_run(
-    'Total Readiness (R=M*C*C; range 0 to 8)')
-row_cells[2].paragraphs[0].add_run('-')
+
+for row in total_readiness_table_text.index:
+    row_cells = table.add_row().cells
+    item = str(total_readiness_table_text.iloc[row]['Item'])
+    body = str(total_readiness_table_text.iloc[row]['Body'])
+    score = str(total_readiness_table_text.iloc[row]['Score'])
+    style = str(total_readiness_table_text.iloc[row]['Style'])
+    if style == 'bold':
+        row_cells[0].paragraphs[0].add_run(item).bold = True
+        row_cells[1].paragraphs[0].add_run(body).bold = True
+        row_cells[2].paragraphs[0].add_run(score).bold = True
+    else:
+        row_cells[0].paragraphs[0].add_run(item)
+        row_cells[1].paragraphs[0].add_run(body)
+        row_cells[2].paragraphs[0].add_run(score)
 
 
 for row in table.rows:
@@ -1854,7 +1628,7 @@ for row in table.rows:
         for paragraph in paragraphs:
             for run in paragraph.runs:
                 font = run.font
-                font.size= Pt(10)
+                font.size = Pt(10)
 
 
 def set_col_widths(table, first_col, middle_col, last_col):
